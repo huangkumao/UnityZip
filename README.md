@@ -14,3 +14,9 @@ Unity-Logs-Viewer方便查看日志和内存占用.
 
 只测试了zip格式.
 
+
+
+**New 升级到了2018.3 SharpZipLib 也升级到了最新版 1.10**
+
+
+
