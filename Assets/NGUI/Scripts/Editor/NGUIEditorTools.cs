@@ -1,12 +1,12 @@
 //-------------------------------------------------
-//            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+//			  NGUI: Next-Gen UI kit
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
-using UnityEditor;
-using UnityEngine;
 using System.Collections.Generic;
 using System.Reflection;
+using UnityEditor;
+using UnityEngine;
 
 /// <summary>
 /// Tools for the editor
@@ -14,10 +14,10 @@ using System.Reflection;
 
 static public class NGUIEditorTools
 {
-	static Texture2D mBackdropTex;
-	static Texture2D mContrastTex;
-	static Texture2D mGradientTex;
-	static GameObject mPrevious;
+	private static Texture2D mBackdropTex;
+	private static Texture2D mContrastTex;
+	private static Texture2D mGradientTex;
+	private static Object mPrevious;
 
 	/// <summary>
 	/// Returns a blank usable 1x1 white texture.
@@ -78,7 +78,7 @@ static public class NGUIEditorTools
 	/// Create a white dummy texture.
 	/// </summary>
 
-	static Texture2D CreateDummyTex ()
+	private static Texture2D CreateDummyTex ()
 	{
 		Texture2D tex = new Texture2D(1, 1);
 		tex.name = "[Generated] Dummy Texture";
@@ -93,7 +93,7 @@ static public class NGUIEditorTools
 	/// Create a checker-background texture
 	/// </summary>
 
-	static Texture2D CreateCheckerTex (Color c0, Color c1)
+	private static Texture2D CreateCheckerTex (Color c0, Color c1)
 	{
 		Texture2D tex = new Texture2D(16, 16);
 		tex.name = "[Generated] Checker Texture";
@@ -113,7 +113,7 @@ static public class NGUIEditorTools
 	/// Create a gradient texture
 	/// </summary>
 
-	static Texture2D CreateGradientTex ()
+	private static Texture2D CreateGradientTex ()
 	{
 		Texture2D tex = new Texture2D(1, 16);
 		tex.name = "[Generated] Gradient Texture";
@@ -142,7 +142,7 @@ static public class NGUIEditorTools
 	{
 		GUI.BeginGroup(rect);
 		{
-			int width  = Mathf.RoundToInt(rect.width);
+			int width = Mathf.RoundToInt(rect.width);
 			int height = Mathf.RoundToInt(rect.height);
 
 			for (int y = 0; y < height; y += tex.height)
@@ -367,7 +367,10 @@ static public class NGUIEditorTools
 	/// Helper function that returns the selected root object.
 	/// </summary>
 
-	static public GameObject SelectedRoot () { return SelectedRoot(false); }
+	static public GameObject SelectedRoot ()
+	{
+		return SelectedRoot(false);
+	}
 
 	/// <summary>
 	/// Helper function that returns the selected root object.
@@ -406,6 +409,51 @@ static public class NGUIEditorTools
 	}
 
 	/// <summary>
+	/// Returns 'true' if the specified object is a prefab.
+	/// </summary>
+
+	static public bool IsPrefab (GameObject go)
+	{
+#if UNITY_2018_3_OR_NEWER
+		return go != null && PrefabUtility.GetPrefabAssetType(go) == PrefabAssetType.Regular;
+#else
+		return go != null && PrefabUtility.GetPrefabType(go) == PrefabType.Prefab;
+#endif
+	}
+
+	/// <summary>
+	/// Returns 'true' if the specified object is a prefab instance.
+	/// </summary>
+
+	static public bool IsPrefabInstance (GameObject go)
+	{
+#if UNITY_2018_3_OR_NEWER
+		return go != null && PrefabUtility.GetPrefabInstanceStatus(go) == PrefabInstanceStatus.Connected;
+#else
+		return go != null && PrefabUtility.GetPrefabType(go) == PrefabType.PrefabInstance;
+#endif
+	}
+
+	/// <summary>
+	/// Given a game object, return its prefab (or itself if it's a prefab).
+	/// </summary>
+
+	static public GameObject GetPrefab (GameObject go)
+	{
+		if (go == null) return null;
+
+#if UNITY_2018_3_OR_NEWER
+		go = PrefabUtility.GetOutermostPrefabInstanceRoot(go);
+		if (go == null) return null;
+		return IsPrefab(go) ? go : PrefabUtility.GetCorrespondingObjectFromSource(go);
+#else
+		go = PrefabUtility.FindPrefabRoot(go);
+		if (go == null) return null;
+		return PrefabUtility.GetPrefabParent(go) as GameObject;
+#endif
+	}
+
+	/// <summary>
 	/// Helper function that checks to see if this action would break the prefab connection.
 	/// </summary>
 
@@ -415,10 +463,7 @@ static public class NGUIEditorTools
 
 		if (root.transform != null)
 		{
-			// Check if the selected object is a prefab instance and display a warning
-			PrefabType type = PrefabUtility.GetPrefabType(root);
-
-			if (type == PrefabType.PrefabInstance)
+			if (IsPrefabInstance(root))
 			{
 				return EditorUtility.DisplayDialog("Losing prefab",
 					"This action will lose the prefab connection. Are you sure you wish to continue?",
@@ -464,7 +509,7 @@ static public class NGUIEditorTools
 	/// Change the import settings of the specified texture asset, making it suitable to be used as a texture atlas.
 	/// </summary>
 
-	static bool MakeTextureAnAtlas (string path, bool force, bool alphaTransparency)
+	private static bool MakeTextureAnAtlas (string path, bool force, bool alphaTransparency)
 	{
 		if (string.IsNullOrEmpty(path)) return false;
 		var ti = AssetImporter.GetAtPath(path) as TextureImporter;
@@ -547,15 +592,24 @@ static public class NGUIEditorTools
 	/// Figures out the saveable filename for the texture of the specified atlas.
 	/// </summary>
 
-	static public string GetSaveableTexturePath (UIAtlas atlas)
+	static public string GetSaveableTexturePath (INGUIAtlas atlas)
+	{
+		if (atlas == null) return "";
+		return GetSaveableTexturePath(atlas as Object, atlas.texture as Texture2D);
+	}
+
+	/// <summary>
+	/// Figures out the saveable filename for the texture of the specified atlas.
+	/// </summary>
+
+	static public string GetSaveableTexturePath (Object obj, Texture2D texture)
 	{
 		// Path where the texture atlas will be saved
 		string path = "";
 
-		// If the atlas already has a texture, overwrite its texture
-		if (atlas.texture != null)
+		if (texture != null)
 		{
-			path = AssetDatabase.GetAssetPath(atlas.texture.GetInstanceID());
+			path = AssetDatabase.GetAssetPath(texture.GetInstanceID());
 
 			if (!string.IsNullOrEmpty(path))
 			{
@@ -565,8 +619,8 @@ static public class NGUIEditorTools
 		}
 
 		// No texture to use -- figure out a name using the atlas
-		path = AssetDatabase.GetAssetPath(atlas.GetInstanceID());
-		path = string.IsNullOrEmpty(path) ? "Assets/" + atlas.name + ".png" : path.Replace(".prefab", ".png");
+		path = AssetDatabase.GetAssetPath(obj.GetInstanceID());
+		path = string.IsNullOrEmpty(path) ? "Assets/" + obj.name + ".png" : path.Replace(".asset", ".png");
 		return path;
 	}
 
@@ -635,10 +689,10 @@ static public class NGUIEditorTools
 
 	static public Rect IntRect (string prefix, Rect rect)
 	{
-		int left	= Mathf.RoundToInt(rect.xMin);
-		int top		= Mathf.RoundToInt(rect.yMin);
-		int width	= Mathf.RoundToInt(rect.width);
-		int height	= Mathf.RoundToInt(rect.height);
+		int left = Mathf.RoundToInt(rect.xMin);
+		int top = Mathf.RoundToInt(rect.yMin);
+		int width = Mathf.RoundToInt(rect.width);
+		int height = Mathf.RoundToInt(rect.height);
 
 		NGUIEditorTools.IntVector a = NGUIEditorTools.IntPair(prefix, "Left", "Top", left, top);
 		NGUIEditorTools.IntVector b = NGUIEditorTools.IntPair(null, "Width", "Height", width, height);
@@ -652,10 +706,10 @@ static public class NGUIEditorTools
 
 	static public Vector4 IntPadding (string prefix, Vector4 v)
 	{
-		int left	= Mathf.RoundToInt(v.x);
-		int top		= Mathf.RoundToInt(v.y);
-		int right	= Mathf.RoundToInt(v.z);
-		int bottom	= Mathf.RoundToInt(v.w);
+		int left = Mathf.RoundToInt(v.x);
+		int top = Mathf.RoundToInt(v.y);
+		int right = Mathf.RoundToInt(v.z);
+		int bottom = Mathf.RoundToInt(v.w);
 
 		NGUIEditorTools.IntVector a = NGUIEditorTools.IntPair(prefix, "Left", "Top", left, top);
 		NGUIEditorTools.IntVector b = NGUIEditorTools.IntPair(null, "Right", "Bottom", right, bottom);
@@ -889,7 +943,7 @@ static public class NGUIEditorTools
 
 		// Draw the sprite
 		GUI.color = color;
-		
+
 		if (mat == null)
 		{
 			GUI.DrawTextureWithTexCoords(outerRect, tex, uv, true);
@@ -918,7 +972,7 @@ static public class NGUIEditorTools
 	/// Draw a sprite selection field.
 	/// </summary>
 
-	static public void DrawSpriteField (string label, UIAtlas atlas, string spriteName, SpriteSelector.Callback callback, params GUILayoutOption[] options)
+	static public void DrawSpriteField (string label, INGUIAtlas atlas, string spriteName, SpriteSelector.Callback callback, params GUILayoutOption[] options)
 	{
 		GUILayout.BeginHorizontal();
 		GUILayout.Label(label, GUILayout.Width(76f));
@@ -936,7 +990,7 @@ static public class NGUIEditorTools
 	/// Draw a sprite selection field.
 	/// </summary>
 
-	static public void DrawPaddedSpriteField (string label, UIAtlas atlas, string spriteName, SpriteSelector.Callback callback, params GUILayoutOption[] options)
+	static public void DrawPaddedSpriteField (string label, INGUIAtlas atlas, string spriteName, SpriteSelector.Callback callback, params GUILayoutOption[] options)
 	{
 		GUILayout.BeginHorizontal();
 		GUILayout.Label(label, GUILayout.Width(76f));
@@ -955,13 +1009,12 @@ static public class NGUIEditorTools
 	/// Draw a sprite selection field.
 	/// </summary>
 
-	static public void DrawSpriteField (string label, string caption, UIAtlas atlas, string spriteName, SpriteSelector.Callback callback, params GUILayoutOption[] options)
+	static public void DrawSpriteField (string label, string caption, INGUIAtlas atlas, string spriteName, SpriteSelector.Callback callback, params GUILayoutOption[] options)
 	{
 		GUILayout.BeginHorizontal();
 		GUILayout.Label(label, GUILayout.Width(76f));
 
-		if (atlas.GetSprite(spriteName) == null)
-			spriteName = "";
+		if (atlas.GetSprite(spriteName) == null) spriteName = "";
 
 		if (GUILayout.Button(spriteName, "MiniPullDown", options))
 		{
@@ -969,7 +1022,7 @@ static public class NGUIEditorTools
 			NGUISettings.selectedSprite = spriteName;
 			SpriteSelector.Show(callback);
 		}
-		
+
 		if (!string.IsNullOrEmpty(caption))
 		{
 			GUILayout.Space(20f);
@@ -982,10 +1035,9 @@ static public class NGUIEditorTools
 	/// Draw a simple sprite selection button.
 	/// </summary>
 
-	static public bool DrawSpriteField (UIAtlas atlas, string spriteName, SpriteSelector.Callback callback, params GUILayoutOption[] options)
+	static public bool DrawSpriteField (INGUIAtlas atlas, string spriteName, SpriteSelector.Callback callback, params GUILayoutOption[] options)
 	{
-		if (atlas.GetSprite(spriteName) == null)
-			spriteName = "";
+		if (atlas.GetSprite(spriteName) == null) spriteName = "";
 
 		if (NGUIEditorTools.DrawPrefixButton(spriteName, options))
 		{
@@ -997,8 +1049,8 @@ static public class NGUIEditorTools
 		return false;
 	}
 
-	static string mEditedName = null;
-	static string mLastSprite = null;
+	private static string mEditedName = null;
+	private static string mLastSprite = null;
 
 	/// <summary>
 	/// Draw a sprite selection field.
@@ -1051,7 +1103,7 @@ static public class NGUIEditorTools
 				EditorGUI.BeginDisabledGroup(atlas.hasMultipleDifferentValues);
 				{
 					if (GUILayout.Button(spriteName, "MiniPullDown", options))
-						SpriteSelector.Show(ob, sprite, atlas.objectReferenceValue as UIAtlas);
+						SpriteSelector.Show(ob, sprite, atlas.objectReferenceValue as INGUIAtlas);
 				}
 				EditorGUI.EndDisabledGroup();
 
@@ -1070,8 +1122,7 @@ static public class NGUIEditorTools
 	/// Convenience function that displays a list of sprites and returns the selected value.
 	/// </summary>
 
-	static public void DrawAdvancedSpriteField (UIAtlas atlas, string spriteName, SpriteSelector.Callback callback, bool editable,
-		params GUILayoutOption[] options)
+	static public void DrawAdvancedSpriteField (INGUIAtlas atlas, string spriteName, SpriteSelector.Callback callback, bool editable, params GUILayoutOption[] options)
 	{
 		if (atlas == null) return;
 
@@ -1108,23 +1159,24 @@ static public class NGUIEditorTools
 
 					if (GUILayout.Button("Rename", GUILayout.Width(60f)))
 					{
-						UISpriteData sprite = atlas.GetSprite(spriteName);
+						var sprite = atlas.GetSprite(spriteName);
 
 						if (sprite != null)
 						{
-							NGUIEditorTools.RegisterUndo("Edit Sprite Name", atlas);
+							RegisterUndo("Edit Sprite Name", atlas as Object);
 							sprite.name = newName;
 
-							List<UISprite> sprites = FindAll<UISprite>();
+							var sprites = FindAll<UISprite>();
 
 							for (int i = 0; i < sprites.Count; ++i)
 							{
-								UISprite sp = sprites[i];
+								var sp = sprites[i];
 
 								if (sp.atlas == atlas && sp.spriteName == spriteName)
 								{
-									NGUIEditorTools.RegisterUndo("Edit Sprite Name", sp);
+									RegisterUndo("Edit Sprite Name", sp);
 									sp.spriteName = newName;
+									NGUITools.SetDirty(sp, "Edit Sprite Name");
 								}
 							}
 
@@ -1132,6 +1184,7 @@ static public class NGUIEditorTools
 							spriteName = newName;
 							mEditedName = null;
 
+							NGUITools.SetDirty(atlas as Object, "Edit Sprite Name");
 							NGUISettings.atlas = atlas;
 							NGUISettings.selectedSprite = spriteName;
 						}
@@ -1149,7 +1202,7 @@ static public class NGUIEditorTools
 				{
 					NGUISettings.atlas = atlas;
 					NGUISettings.selectedSprite = spriteName;
-					Select(atlas.gameObject);
+					Select(atlas as UnityEngine.Object);
 				}
 			}
 		}
@@ -1181,22 +1234,7 @@ static public class NGUIEditorTools
 		if (NGUISettings.atlas != null)
 		{
 			NGUISettings.selectedSprite = spriteName;
-			NGUIEditorTools.Select(NGUISettings.atlas.gameObject);
-			RepaintSprites();
-		}
-	}
-
-	/// <summary>
-	/// Select the specified atlas and sprite.
-	/// </summary>
-
-	static public void SelectSprite (UIAtlas atlas, string spriteName)
-	{
-		if (atlas != null)
-		{
-			NGUISettings.atlas = atlas;
-			NGUISettings.selectedSprite = spriteName;
-			NGUIEditorTools.Select(atlas.gameObject);
+			NGUIEditorTools.Select(NGUISettings.atlas as Object);
 			RepaintSprites();
 		}
 	}
@@ -1205,12 +1243,41 @@ static public class NGUIEditorTools
 	/// Select the specified game object and remember what was selected before.
 	/// </summary>
 
-	static public void Select (GameObject go)
+	static public void Select (Object obj)
 	{
 		mPrevious = Selection.activeGameObject;
-		Selection.activeGameObject = go;
+		Selection.activeObject = obj;
+#if UNITY_2018_3_OR_NEWER
+		OpenAsset(obj as GameObject);
+#endif
 	}
-	
+
+#if UNITY_2018_3_OR_NEWER
+	// Contributed by B9 of https://discord.gg/tasharen
+	static void OpenAsset (GameObject go)
+	{
+		// Supporting opening of prefabs in Play mode is a bit of a can of worms if target might have ExecuteInEditMode
+		if (!go || Application.isPlaying) return;
+
+		// No point continuing if we're dealing with a traditional main stage object
+		bool partOfPrefabInstance = PrefabUtility.IsPartOfPrefabInstance (go);
+		bool partOfPrefabAsset = PrefabUtility.IsPartOfPrefabAsset (go);
+		if (!partOfPrefabInstance && !partOfPrefabAsset) return;
+
+		var asset = partOfPrefabInstance ? PrefabUtility.GetCorrespondingObjectFromSource (go) : go;
+		string path = AssetDatabase.GetAssetPath (asset);
+
+		// var assetRoot = PrefabUtility.LoadPrefabContents (path);
+		// This API call above loads the prefab to an invisible scene and allows direct inspection without leaving main stage.
+		// Except it would require us to manage saving and disposing that temporary prefab stage scene and root and that's very hard
+		// when the user still has full access to main stage hierarchy and can select anything again, leaving us with no way
+		// to detect when cleanup is required. So, for now, I'd just load the selected asset exclusively and take over Editor view.
+
+		// Last second check to confirm we're definitely targeting an in-project prefab asset and not some random type like an image
+		if (PrefabUtility.IsPartOfAnyPrefab (asset)) AssetDatabase.OpenAsset (AssetDatabase.LoadAssetAtPath (path, asset.GetType ()));
+	}
+#endif
+
 	/// <summary>
 	/// Select the previous game object.
 	/// </summary>
@@ -1219,7 +1286,10 @@ static public class NGUIEditorTools
 	{
 		if (mPrevious != null)
 		{
-			Selection.activeGameObject = mPrevious;
+			Selection.activeObject = mPrevious;
+#if UNITY_2018_3_OR_NEWER
+			OpenAsset(mPrevious as GameObject);
+#endif
 			mPrevious = null;
 		}
 	}
@@ -1228,7 +1298,7 @@ static public class NGUIEditorTools
 	/// Previously selected game object.
 	/// </summary>
 
-	static public GameObject previousSelection { get { return mPrevious; } }
+	static public Object previousSelection { get { return mPrevious; } }
 
 	/// <summary>
 	/// Helper function that checks to see if the scale is uniform.
@@ -1279,25 +1349,37 @@ static public class NGUIEditorTools
 	/// Draw a distinctly different looking header label
 	/// </summary>
 
-	static public bool DrawMinimalisticHeader (string text) { return DrawHeader(text, text, false, true); }
+	static public bool DrawMinimalisticHeader (string text)
+	{
+		return DrawHeader(text, text, false, true);
+	}
 
 	/// <summary>
 	/// Draw a distinctly different looking header label
 	/// </summary>
 
-	static public bool DrawHeader (string text) { return DrawHeader(text, text, false, NGUISettings.minimalisticLook); }
+	static public bool DrawHeader (string text)
+	{
+		return DrawHeader(text, text, false, NGUISettings.minimalisticLook);
+	}
 
 	/// <summary>
 	/// Draw a distinctly different looking header label
 	/// </summary>
 
-	static public bool DrawHeader (string text, string key) { return DrawHeader(text, key, false, NGUISettings.minimalisticLook); }
+	static public bool DrawHeader (string text, string key)
+	{
+		return DrawHeader(text, key, false, NGUISettings.minimalisticLook);
+	}
 
 	/// <summary>
 	/// Draw a distinctly different looking header label
 	/// </summary>
 
-	static public bool DrawHeader (string text, bool detailed) { return DrawHeader(text, text, detailed, !detailed); }
+	static public bool DrawHeader (string text, bool detailed)
+	{
+		return DrawHeader(text, text, detailed, !detailed);
+	}
 
 	/// <summary>
 	/// Draw a distinctly different looking header label
@@ -1344,9 +1426,12 @@ static public class NGUIEditorTools
 	/// Begin drawing the content area.
 	/// </summary>
 
-	static public void BeginContents () { BeginContents(NGUISettings.minimalisticLook); }
+	static public void BeginContents ()
+	{
+		BeginContents(NGUISettings.minimalisticLook);
+	}
 
-	static bool mEndHorizontal = false;
+	private static bool mEndHorizontal = false;
 
 #if UNITY_4_7 || UNITY_5_5 || UNITY_5_6
 	static public string textArea = "AS TextArea";
@@ -1677,7 +1762,10 @@ static public class NGUIEditorTools
 	/// Select the topmost widget underneath the specified screen coordinate.
 	/// </summary>
 
-	static public bool SelectWidget (Vector2 pos) { return SelectWidget(null, pos, true); }
+	static public bool SelectWidget (Vector2 pos)
+	{
+		return SelectWidget(null, pos, true);
+	}
 
 	/// <summary>
 	/// Select the next widget in line.
@@ -1712,7 +1800,7 @@ static public class NGUIEditorTools
 		{
 			if (start != null)
 			{
-				for (int i = widgets.Count; i > 0; )
+				for (int i = widgets.Count; i > 0;)
 				{
 					UIWidget w = widgets[--i];
 
@@ -1745,22 +1833,16 @@ static public class NGUIEditorTools
 	}
 
 	/// <summary>
+	/// Create an undo point for the specified object.
+	/// </summary>
+
+	static public void RegisterUndo (string name, Object obj) { if (obj != null) UnityEditor.Undo.RecordObject(obj, name); }
+
+	/// <summary>
 	/// Create an undo point for the specified objects.
 	/// </summary>
 
-	static public void RegisterUndo (string name, params Object[] objects)
-	{
-		if (objects != null && objects.Length > 0)
-		{
-			UnityEditor.Undo.RecordObjects(objects, name);
-
-			foreach (Object obj in objects)
-			{
-				if (obj == null) continue;
-				NGUITools.SetDirty(obj);
-			}
-		}
-	}
+	static public void RegisterUndo (string name, params Object[] objects) { if (objects != null && objects.Length > 0) UnityEditor.Undo.RecordObjects(objects, name); }
 
 	/// <summary>
 	/// Unity 4.5+ makes it possible to hide the move tool.
@@ -1770,11 +1852,11 @@ static public class NGUIEditorTools
 	{
 #if !UNITY_4_3
 		UnityEditor.Tools.hidden = hide &&
- #if !UNITY_4_5
+#if !UNITY_4_5
 			(UnityEditor.Tools.current == UnityEditor.Tool.Rect) &&
- #else
+#else
 			(UnityEditor.Tools.current == UnityEditor.Tool.Move) &&
- #endif
+#endif
 			UIWidget.showHandlesWithMoveTool && !NGUISettings.showTransformHandles;
 #endif
 	}
@@ -1785,10 +1867,10 @@ static public class NGUIEditorTools
 
 	static public int GetClassID (System.Type type)
 	{
-		GameObject go = EditorUtility.CreateGameObjectWithHideFlags("Temp", HideFlags.HideAndDontSave);
-		Component uiSprite = go.AddComponent(type);
-		SerializedObject ob = new SerializedObject(uiSprite);
-		int classID = ob.FindProperty("m_Script").objectReferenceInstanceIDValue;
+		var go = EditorUtility.CreateGameObjectWithHideFlags("Temp", HideFlags.HideAndDontSave);
+		var uiSprite = go.AddComponent(type);
+		var ob = new SerializedObject(uiSprite);
+		var classID = ob.FindProperty("m_Script").objectReferenceInstanceIDValue;
 		NGUITools.DestroyImmediate(go);
 		return classID;
 	}
@@ -1797,7 +1879,10 @@ static public class NGUIEditorTools
 	/// Gets the internal class ID of the specified type.
 	/// </summary>
 
-	static public int GetClassID<T> () where T : MonoBehaviour { return GetClassID(typeof(T)); }
+	static public int GetClassID<T> () where T : MonoBehaviour
+	{
+		return GetClassID(typeof(T));
+	}
 
 	/// <summary>
 	/// Convenience function that replaces the specified MonoBehaviour with one of specified type.
@@ -1805,8 +1890,8 @@ static public class NGUIEditorTools
 
 	static public SerializedObject ReplaceClass (MonoBehaviour mb, System.Type type)
 	{
-		int id = GetClassID(type);
-		SerializedObject ob = new SerializedObject(mb);
+		var id = GetClassID(type);
+		var ob = new SerializedObject(mb);
 		ob.Update();
 		ob.FindProperty("m_Script").objectReferenceInstanceIDValue = id;
 		ob.ApplyModifiedProperties();
@@ -1820,7 +1905,7 @@ static public class NGUIEditorTools
 
 	static public SerializedObject ReplaceClass (MonoBehaviour mb, int classID)
 	{
-		SerializedObject ob = new SerializedObject(mb);
+		var ob = new SerializedObject(mb);
 		ob.Update();
 		ob.FindProperty("m_Script").objectReferenceInstanceIDValue = classID;
 		ob.ApplyModifiedProperties();
@@ -1854,13 +1939,16 @@ static public class NGUIEditorTools
 	/// Convenience function that replaces the specified MonoBehaviour with one of specified type.
 	/// </summary>
 
-	static public T ReplaceClass<T> (MonoBehaviour mb) where T : MonoBehaviour { return ReplaceClass(mb, typeof(T)).targetObject as T; }
+	static public T ReplaceClass<T> (MonoBehaviour mb) where T : MonoBehaviour
+	{
+		return ReplaceClass(mb, typeof(T)).targetObject as T;
+	}
 
 	/// <summary>
 	/// Automatically upgrade all of the UITextures in the scene to Sprites if they can be found within the specified atlas.
 	/// </summary>
 
-	static public void UpgradeTexturesToSprites (UIAtlas atlas)
+	static public void UpgradeTexturesToSprites (INGUIAtlas atlas)
 	{
 		if (atlas == null) return;
 		List<UITexture> uits = FindAll<UITexture>();
@@ -1876,17 +1964,17 @@ static public class NGUIEditorTools
 			// Run through all the UI textures and change them to sprites
 			for (int i = 0; i < uits.Count; ++i)
 			{
-				UIWidget uiTexture = uits[i];
+				var uiTexture = uits[i];
 
 				if (uiTexture != null && uiTexture.mainTexture != null)
 				{
-					UISpriteData atlasSprite = atlas.GetSprite(uiTexture.mainTexture.name);
+					var atlasSprite = atlas.GetSprite(uiTexture.mainTexture.name);
 
 					if (atlasSprite != null)
 					{
 						SerializedObject ob = ReplaceClass(uiTexture, spriteID);
 						ob.FindProperty("mSpriteName").stringValue = uiTexture.mainTexture.name;
-						ob.FindProperty("mAtlas").objectReferenceValue = NGUISettings.atlas;
+						ob.FindProperty("mAtlas").objectReferenceValue = atlas as Object;
 						ob.ApplyModifiedProperties();
 					}
 				}
@@ -1902,11 +1990,15 @@ static public class NGUIEditorTools
 		}
 	}
 
-	class MenuEntry
+	private class MenuEntry
 	{
 		public string name;
 		public GameObject go;
-		public MenuEntry (string name, GameObject go) { this.name = name; this.go = go; }
+
+		public MenuEntry (string name, GameObject go)
+		{
+			this.name = name; this.go = go;
+		}
 	}
 
 	/// <summary>
@@ -1973,14 +2065,14 @@ static public class NGUIEditorTools
 		NGUIContextMenu.AddCommonItems(Selection.activeGameObject);
 
 		// Add widgets to the menu in the reverse order so that they are shown with the top-most widget first (on top)
-		for (int i = entries.Count; i > 0; )
+		for (int i = entries.Count; i > 0;)
 		{
 			MenuEntry ent = entries[--i];
 
 			if (ent != null)
 			{
 				NGUIContextMenu.AddItem("Select/" + ent.name, Selection.activeGameObject == ent.go,
-					delegate(object go) { Selection.activeGameObject = (GameObject)go; }, ent.go);
+					delegate (object go) { Selection.activeGameObject = (GameObject)go; }, ent.go);
 			}
 			else if (!divider)
 			{
@@ -1990,6 +2082,7 @@ static public class NGUIEditorTools
 		NGUIContextMenu.AddHelp(Selection.activeGameObject, true);
 		NGUIContextMenu.Show();
 	}
+
 	/// <summary>
 	/// Load the asset at the specified path.
 	/// </summary>
@@ -2004,7 +2097,7 @@ static public class NGUIEditorTools
 	/// Convenience function to load an asset of specified type, given the full path to it.
 	/// </summary>
 
-	static public T LoadAsset<T> (string path) where T: Object
+	static public T LoadAsset<T> (string path) where T : Object
 	{
 		Object obj = LoadAsset(path);
 		if (obj == null) return null;
@@ -2033,7 +2126,7 @@ static public class NGUIEditorTools
 		return (!string.IsNullOrEmpty(path)) ? AssetDatabase.AssetPathToGUID(path) : null;
 	}
 
-	static MethodInfo s_GetInstanceIDFromGUID;
+	private static MethodInfo s_GetInstanceIDFromGUID;
 
 	/// <summary>
 	/// Convert the specified GUID to an object reference.
@@ -2255,7 +2348,7 @@ static public class NGUIEditorTools
 			GUILayout.Space(18f);
 	}
 
-	static System.Collections.Generic.Dictionary<string, TextureImporterType> mOriginal = new Dictionary<string, TextureImporterType>();
+	private static System.Collections.Generic.Dictionary<string, TextureImporterType> mOriginal = new Dictionary<string, TextureImporterType>();
 
 	/// <summary>
 	/// Force the texture to be readable. Returns the asset database path to the texture.

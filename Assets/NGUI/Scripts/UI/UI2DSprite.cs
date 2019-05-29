@@ -1,6 +1,6 @@
 //-------------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
 using UnityEngine;
@@ -14,7 +14,7 @@ using System.Collections.Generic;
 /// </summary>
 
 [ExecuteInEditMode]
-[AddComponentMenu("NGUI/UI/NGUI Unity2D Sprite")]
+[AddComponentMenu("NGUI/UI/Unity2D Sprite")]
 public class UI2DSprite : UIBasicSprite
 {
 	[HideInInspector][SerializeField] UnityEngine.Sprite mSprite;
@@ -102,7 +102,7 @@ public class UI2DSprite : UIBasicSprite
 			}
 		}
 	}
-	
+
 	/// <summary>
 	/// Texture used by the UITexture. You can set it directly, without the need to specify a material.
 	/// </summary>
@@ -275,10 +275,10 @@ public class UI2DSprite : UIBasicSprite
 	{
 		if (nextSprite != null)
 		{
-			if (nextSprite != mSprite)
-				sprite2D = nextSprite;
+			if (nextSprite != mSprite) sprite2D = nextSprite;
 			nextSprite = null;
 		}
+
 		base.OnUpdate();
 
 		if (mFixedAspect)

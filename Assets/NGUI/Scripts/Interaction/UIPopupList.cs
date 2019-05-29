@@ -1,6 +1,6 @@
 //-------------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
 using UnityEngine;
@@ -42,19 +42,41 @@ public class UIPopupList : UIWidgetContainer
 	/// Atlas used by the sprites.
 	/// </summary>
 
-	public UIAtlas atlas;
+	public Object atlas;
 
 	/// <summary>
 	/// Font used by the labels.
 	/// </summary>
 
-	public UIFont bitmapFont;
+	public Object bitmapFont;
 
 	/// <summary>
 	/// True type font used by the labels. Alternative to specifying a bitmap font ('font').
 	/// </summary>
 
 	public Font trueTypeFont;
+
+	/// <summary>
+	/// NGUI font interface, if it's using a bitmap font.
+	/// </summary>
+
+	public INGUIFont font
+	{
+		get
+		{
+			if (bitmapFont != null)
+			{
+				if (bitmapFont is GameObject) return (bitmapFont as GameObject).GetComponent<UIFont>();
+				return bitmapFont as INGUIFont;
+			}
+			return null;
+		}
+		set
+		{
+			bitmapFont = (value as Object);
+			trueTypeFont = null;
+		}
+	}
 
 	/// <summary>
 	/// Font used by the popup list. Conveniently wraps both dynamic and bitmap fonts into one property.
@@ -65,8 +87,13 @@ public class UIPopupList : UIWidgetContainer
 		get
 		{
 			if (trueTypeFont != null) return trueTypeFont;
-			if (bitmapFont != null) return bitmapFont;
-			return font;
+
+			if (bitmapFont != null)
+			{
+				if (bitmapFont is GameObject) return (bitmapFont as GameObject).GetComponent<UIFont>();
+				return bitmapFont as Object;
+			}
+			return null;
 		}
 		set
 		{
@@ -74,13 +101,16 @@ public class UIPopupList : UIWidgetContainer
 			{
 				trueTypeFont = value as Font;
 				bitmapFont = null;
-				font = null;
 			}
-			else if (value is UIFont)
+			else if (value is INGUIFont)
 			{
-				bitmapFont = value as UIFont;
+				bitmapFont = value as Object;
 				trueTypeFont = null;
-				font = null;
+			}
+			else if (value is GameObject)
+			{
+				bitmapFont = (value as GameObject).GetComponent<UIFont>();
+				trueTypeFont = null;
 			}
 		}
 	}
@@ -209,7 +239,7 @@ public class UIPopupList : UIWidgetContainer
 	/// <summary>
 	/// Amount by which the popup's border will overlap with the content that opened it.
 	/// </summary>
-	
+
 	public int overlap = 0;
 
 	[DoNotObfuscateNGUI] public enum OpenOn
@@ -254,7 +284,6 @@ public class UIPopupList : UIWidgetContainer
 	[HideInInspector][SerializeField] GameObject eventReceiver;
 	[HideInInspector][SerializeField] string functionName = "OnSelectionChange";
 	[HideInInspector][SerializeField] float textScale = 0f;
-	[HideInInspector][SerializeField] UIFont font; // Use 'bitmapFont' instead
 
 	// This functionality is no longer needed as the same can be achieved by choosing a
 	// OnValueChange notification targeting a label's SetCurrentSelection function.
@@ -322,25 +351,48 @@ public class UIPopupList : UIWidgetContainer
 			Collider2D b = GetComponent<Collider2D>();
 			return (b != null && b.enabled);
 		}
+		set
+		{
+			Collider c = GetComponent<Collider>();
+			if (c != null) { c.enabled = value; return; }
+			Collider2D b = GetComponent<Collider2D>();
+			if (b != null) { b.enabled = value; return; }
+		}
 	}
 
 	/// <summary>
 	/// Whether the popup list is actually usable.
 	/// </summary>
 
-	protected bool isValid { get { return bitmapFont != null || trueTypeFont != null; } }
+	protected bool isValid { get { return ambigiousFont != null; } }
 
 	/// <summary>
 	/// Active font size.
 	/// </summary>
 
-	protected int activeFontSize { get { return (trueTypeFont != null || bitmapFont == null) ? fontSize : bitmapFont.defaultSize; } }
+	protected int activeFontSize
+	{
+		get
+		{
+			var bm = font;
+			if (trueTypeFont != null || bm == null) return fontSize;
+			return (bm != null) ? bm.defaultSize : fontSize;
+		}
+	}
 
 	/// <summary>
 	/// Font scale applied to the popup list's text.
 	/// </summary>
 
-	protected float activeFontScale { get { return (trueTypeFont != null || bitmapFont == null) ? 1f : (float)fontSize / bitmapFont.defaultSize; } }
+	protected float activeFontScale
+	{
+		get
+		{
+			var bm = font;
+			if (trueTypeFont != null || bm == null) return 1f;
+			return (bm != null) ? (float)fontSize / bm.defaultSize : 1f;
+		}
+	}
 
 	/// <summary>
 	/// Scale needed to be applied to the popup in order for it to fit on the screen.
@@ -509,77 +561,20 @@ public class UIPopupList : UIWidgetContainer
 			functionName = null;
 		}
 
-		// 'font' is no longer used
-		if (font != null)
-		{
-			if (font.isDynamic)
-			{
-				trueTypeFont = font.dynamicFont;
-				fontStyle = font.dynamicFontStyle;
-				mUseDynamicFont = true;
-			}
-			else if (bitmapFont == null)
-			{
-				bitmapFont = font;
-				mUseDynamicFont = false;
-			}
-			font = null;
-		}
+		var bm = font;
 
 		// 'textScale' is no longer used
 		if (textScale != 0f)
 		{
-			fontSize = (bitmapFont != null) ? Mathf.RoundToInt(bitmapFont.defaultSize * textScale) : 16;
+			fontSize = (bm != null) ? Mathf.RoundToInt(bm.defaultSize * textScale) : 16;
 			textScale = 0f;
 		}
 
 		// Auto-upgrade to the true type font
-		if (trueTypeFont == null && bitmapFont != null && bitmapFont.isDynamic && bitmapFont.replacement == null)
+		if (trueTypeFont == null && bm != null && bm.isDynamic && bm.replacement == null)
 		{
-			trueTypeFont = bitmapFont.dynamicFont;
+			trueTypeFont = bm.dynamicFont;
 			bitmapFont = null;
-		}
-	}
-
-	protected bool mUseDynamicFont = false;
-
-	protected virtual void OnValidate ()
-	{
-		Font ttf = trueTypeFont;
-		UIFont fnt = bitmapFont;
-
-		bitmapFont = null;
-		trueTypeFont = null;
-
-		if (ttf != null && (fnt == null || !mUseDynamicFont))
-		{
-			bitmapFont = null;
-			trueTypeFont = ttf;
-			mUseDynamicFont = true;
-		}
-		else if (fnt != null)
-		{
-			if (fnt.replacement == null)
-			{
-				// Auto-upgrade from 3.0.2 and earlier
-				if (fnt.isDynamic)
-				{
-					trueTypeFont = fnt.dynamicFont;
-					fontStyle = fnt.dynamicFontStyle;
-					fontSize = fnt.defaultSize;
-					mUseDynamicFont = true;
-				}
-				else
-				{
-					bitmapFont = fnt;
-					mUseDynamicFont = false;
-				}
-			}
-		}
-		else
-		{
-			trueTypeFont = ttf;
-			mUseDynamicFont = true;
 		}
 	}
 
@@ -663,9 +658,13 @@ public class UIPopupList : UIWidgetContainer
 	protected virtual Vector3 GetHighlightPosition ()
 	{
 		if (mHighlightedLabel == null || mHighlight == null) return Vector3.zero;
-		
+
 		Vector4 border = mHighlight.border;
-		float scaleFactor = (atlas != null) ? atlas.pixelSize : 1f;
+		float scaleFactor = 1f;
+
+		var atl = atlas as INGUIAtlas;
+		if (atl != null) scaleFactor = atl.pixelSize;
+
 		float offsetX = border.x * scaleFactor;
 		float offsetY = border.w * scaleFactor;
 		return mHighlightedLabel.cachedTransform.localPosition + new Vector3(-offsetX, offsetY, 1f);
@@ -683,7 +682,7 @@ public class UIPopupList : UIWidgetContainer
 		if (mHighlight != null && mHighlightedLabel != null)
 		{
 			TweenPosition tp = mHighlight.GetComponent<TweenPosition>();
-			
+
 			while (tp != null && tp.enabled)
 			{
 				tp.to = GetHighlightPosition();
@@ -1022,7 +1021,7 @@ public class UIPopupList : UIWidgetContainer
 				panel.depth = 1000000;
 				panel.sortingOrder = mPanel.sortingOrder;
 			}
-			
+
 			current = this;
 
 			var pTrans = mPanel.cachedTransform;
@@ -1070,7 +1069,7 @@ public class UIPopupList : UIWidgetContainer
 				sp2.sprite2D = background2DSprite;
 				mBackground = sp2;
 			}
-			else if (atlas != null) mBackground = NGUITools.AddSprite(mChild, atlas, backgroundSprite, depth);
+			else if (atlas != null) mBackground = NGUITools.AddSprite(mChild, atlas as INGUIAtlas, backgroundSprite, depth);
 			else return;
 
 			bool placeAbove = (position == Position.Above);
@@ -1101,7 +1100,7 @@ public class UIPopupList : UIWidgetContainer
 				sp2.sprite2D = highlight2DSprite;
 				mHighlight = sp2;
 			}
-			else if (atlas != null) mHighlight = NGUITools.AddSprite(mChild, atlas, highlightSprite, ++depth);
+			else if (atlas != null) mHighlight = NGUITools.AddSprite(mChild, atlas as INGUIAtlas, highlightSprite, ++depth);
 			else return;
 
 			float hlspHeight = 0f, hlspLeft = 0f;
@@ -1133,7 +1132,7 @@ public class UIPopupList : UIWidgetContainer
 				UILabel lbl = NGUITools.AddWidget<UILabel>(mChild, mBackground.depth + 2);
 				lbl.name = i.ToString();
 				lbl.pivot = UIWidget.Pivot.TopLeft;
-				lbl.bitmapFont = bitmapFont;
+				lbl.bitmapFont = bitmapFont as INGUIFont;
 				lbl.trueTypeFont = trueTypeFont;
 				lbl.fontSize = fontSize;
 				lbl.fontStyle = fontStyle;
@@ -1216,7 +1215,11 @@ public class UIPopupList : UIWidgetContainer
 			}
 
 			// Scale the highlight sprite to envelop a single item
-			float scaleFactor = (atlas != null) ? 2f * atlas.pixelSize : 2f;
+
+			float scaleFactor = 2f;
+			var atl = atlas as INGUIAtlas;
+			if (atl != null) scaleFactor *= atl.pixelSize;
+
 			float w = x - (bgPadding.x + padding.x) * 2f + hlspLeft * scaleFactor;
 			float h = labelHeight + hlspHeight * scaleFactor;
 			mHighlight.width = Mathf.RoundToInt(w);

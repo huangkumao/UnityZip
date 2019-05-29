@@ -1,6 +1,6 @@
 //-------------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
 using UnityEngine;
@@ -98,11 +98,8 @@ public class UIColorPicker : MonoBehaviour
 
 	void Sample ()
 	{
-		Vector3 pos = UICamera.lastEventPosition;
-		pos = mCam.cachedCamera.ScreenToWorldPoint(pos);
-
-		pos = mTrans.InverseTransformPoint(pos);
-		Vector3[] corners = mUITex.localCorners;
+		var pos = mTrans.InverseTransformPoint(UICamera.lastWorldPosition);
+		var corners = mUITex.localCorners;
 		mPos.x = Mathf.Clamp01((pos.x - corners[0].x) / (corners[2].x - corners[0].x));
 		mPos.y = Mathf.Clamp01((pos.y - corners[0].y) / (corners[2].y - corners[0].y));
 

@@ -1,6 +1,6 @@
 //-------------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
 using UnityEngine;
@@ -9,10 +9,11 @@ using System;
 
 /// <summary>
 /// UI Atlas contains a collection of sprites inside one large texture atlas.
+/// This is the legacy atlas component, kept for full backwards compatibility. All newly created UIs should use NGUIAtlas-based atlases instead.
 /// </summary>
 
-[AddComponentMenu("NGUI/UI/Atlas")]
-public class UIAtlas : MonoBehaviour
+//[AddComponentMenu("NGUI/UI/Atlas")] // No longer used as the scriptable object NGUIAtlas is used instead
+public class UIAtlas : MonoBehaviour, INGUIAtlas
 {
 	// Legacy functionality, removed in 3.0. Do not use.
 	[System.Serializable]
@@ -52,17 +53,17 @@ public class UIAtlas : MonoBehaviour
 	[HideInInspector][SerializeField] float mPixelSize = 1f;
 
 	// Replacement atlas can be used to completely bypass this atlas, pulling the data from another one instead.
-	[HideInInspector][SerializeField] UIAtlas mReplacement;
+	[HideInInspector][SerializeField] UnityEngine.Object mReplacement;
 
 	// Legacy functionality -- do not use
 	[HideInInspector][SerializeField] Coordinates mCoordinates = Coordinates.Pixels;
 	[HideInInspector][SerializeField] List<Sprite> sprites = new List<Sprite>();
 
 	// Whether the atlas is using a pre-multiplied alpha material. -1 = not checked. 0 = no. 1 = yes.
-	int mPMA = -1;
+	[System.NonSerialized] int mPMA = -1;
 
 	// Dictionary lookup to speed up sprite retrieval at run-time
-	Dictionary<string, int> mSpriteIndices = new Dictionary<string, int>();
+	[System.NonSerialized] Dictionary<string, int> mSpriteIndices = new Dictionary<string, int>();
 
 	/// <summary>
 	/// Material used by the atlas.
@@ -72,13 +73,16 @@ public class UIAtlas : MonoBehaviour
 	{
 		get
 		{
-			return (mReplacement != null) ? mReplacement.spriteMaterial : material;
+			var rep = replacement;
+			return (rep != null) ? rep.spriteMaterial : material;
 		}
 		set
 		{
-			if (mReplacement != null)
+			var rep = replacement;
+
+			if (rep != null)
 			{
-				mReplacement.spriteMaterial = value;
+				rep.spriteMaterial = value;
 			}
 			else
 			{
@@ -106,7 +110,8 @@ public class UIAtlas : MonoBehaviour
 	{
 		get
 		{
-			if (mReplacement != null) return mReplacement.premultipliedAlpha;
+			var rep = replacement;
+			if (rep != null) return rep.premultipliedAlpha;
 
 			if (mPMA == -1)
 			{
@@ -125,20 +130,16 @@ public class UIAtlas : MonoBehaviour
 	{
 		get
 		{
-			if (mReplacement != null) return mReplacement.spriteList;
+			var rep = replacement;
+			if (rep != null) return rep.spriteList;
 			if (mSprites.Count == 0) Upgrade();
 			return mSprites;
 		}
 		set
 		{
-			if (mReplacement != null)
-			{
-				mReplacement.spriteList = value;
-			}
-			else
-			{
-				mSprites = value;
-			}
+			var rep = replacement;
+			if (rep != null) rep.spriteList = value;
+			else mSprites = value;
 		}
 	}
 
@@ -146,7 +147,14 @@ public class UIAtlas : MonoBehaviour
 	/// Texture used by the atlas.
 	/// </summary>
 
-	public Texture texture { get { return (mReplacement != null) ? mReplacement.texture : (material != null ? material.mainTexture as Texture : null); } }
+	public Texture texture
+	{
+		get
+		{
+			var rep = replacement;
+			return (rep != null) ? rep.texture : (material != null ? material.mainTexture as Texture : null);
+		}
+	}
 
 	/// <summary>
 	/// Pixel size is a multiplier applied to widgets dimensions when performing MakePixelPerfect() pixel correction.
@@ -158,13 +166,16 @@ public class UIAtlas : MonoBehaviour
 	{
 		get
 		{
-			return (mReplacement != null) ? mReplacement.pixelSize : mPixelSize;
+			var rep = replacement;
+			return (rep != null) ? rep.pixelSize : mPixelSize;
 		}
 		set
 		{
-			if (mReplacement != null)
+			var rep = replacement;
+
+			if (rep != null)
 			{
-				mReplacement.pixelSize = value;
+				rep.pixelSize = value;
 			}
 			else
 			{
@@ -185,22 +196,22 @@ public class UIAtlas : MonoBehaviour
 	/// to another one (for example an HD atlas) is then a simple matter of setting this field on your dummy atlas.
 	/// </summary>
 
-	public UIAtlas replacement
+	public INGUIAtlas replacement
 	{
 		get
 		{
-			return mReplacement;
+			return mReplacement as INGUIAtlas;
 		}
 		set
 		{
-			UIAtlas rep = value;
-			if (rep == this) rep = null;
+			var rep = value;
+			if (rep == this as INGUIAtlas) rep = null;
 
-			if (mReplacement != rep)
+			if (mReplacement as INGUIAtlas != rep)
 			{
-				if (rep != null && rep.replacement == this) rep.replacement = null;
+				if (rep != null && rep.replacement == this as INGUIAtlas) rep.replacement = null;
 				if (mReplacement != null) MarkAsChanged();
-				mReplacement = rep;
+				mReplacement = rep as UnityEngine.Object;
 				if (rep != null) material = null;
 				MarkAsChanged();
 			}
@@ -213,9 +224,11 @@ public class UIAtlas : MonoBehaviour
 
 	public UISpriteData GetSprite (string name)
 	{
-		if (mReplacement != null)
+		var rep = replacement;
+
+		if (rep != null)
 		{
-			return mReplacement.GetSprite(name);
+			return rep.GetSprite(name);
 		}
 		else if (!string.IsNullOrEmpty(name))
 		{
@@ -267,27 +280,6 @@ public class UIAtlas : MonoBehaviour
 	}
 
 	/// <summary>
-	/// Convenience function that returns the name of a random sprite that begins with the specified value.
-	/// </summary>
-
-	public string GetRandomSprite (string startsWith)
-	{
-		if (GetSprite(startsWith) == null)
-		{
-			System.Collections.Generic.List<UISpriteData> sprites = spriteList;
-			System.Collections.Generic.List<string> choices = new System.Collections.Generic.List<string>();
-
-			foreach (UISpriteData sd in sprites)
-			{
-				if (sd.name.StartsWith(startsWith))
-					choices.Add(sd.name);
-			}
-			return (choices.Count > 0) ? choices[UnityEngine.Random.Range(0, choices.Count)] : null;
-		}
-		return startsWith;
-	}
-
-	/// <summary>
 	/// Rebuild the sprite indices. Call this after modifying the spriteList at run time.
 	/// </summary>
 
@@ -321,11 +313,12 @@ public class UIAtlas : MonoBehaviour
 
 	public BetterList<string> GetListOfSprites ()
 	{
-		if (mReplacement != null) return mReplacement.GetListOfSprites();
+		var rep = replacement;
+		if (rep != null) return rep.GetListOfSprites();
 		if (mSprites.Count == 0) Upgrade();
 
 		BetterList<string> list = new BetterList<string>();
-		
+
 		for (int i = 0, imax = mSprites.Count; i < imax; ++i)
 		{
 			UISpriteData s = mSprites[i];
@@ -340,7 +333,8 @@ public class UIAtlas : MonoBehaviour
 
 	public BetterList<string> GetListOfSprites (string match)
 	{
-		if (mReplacement) return mReplacement.GetListOfSprites(match);
+		var rep = replacement;
+		if (rep != null) return rep.GetListOfSprites(match);
 		if (string.IsNullOrEmpty(match)) return GetListOfSprites();
 
 		if (mSprites.Count == 0) Upgrade();
@@ -350,7 +344,7 @@ public class UIAtlas : MonoBehaviour
 		for (int i = 0, imax = mSprites.Count; i < imax; ++i)
 		{
 			UISpriteData s = mSprites[i];
-			
+
 			if (s != null && !string.IsNullOrEmpty(s.name) && string.Equals(match, s.name, StringComparison.OrdinalIgnoreCase))
 			{
 				list.Add(s.name);
@@ -366,7 +360,7 @@ public class UIAtlas : MonoBehaviour
 		for (int i = 0, imax = mSprites.Count; i < imax; ++i)
 		{
 			UISpriteData s = mSprites[i];
-			
+
 			if (s != null && !string.IsNullOrEmpty(s.name))
 			{
 				string tl = s.name.ToLower();
@@ -386,21 +380,12 @@ public class UIAtlas : MonoBehaviour
 	/// Helper function that determines whether the atlas uses the specified one, taking replacements into account.
 	/// </summary>
 
-	bool References (UIAtlas atlas)
+	public bool References (INGUIAtlas atlas)
 	{
 		if (atlas == null) return false;
-		if (atlas == this) return true;
-		return (mReplacement != null) ? mReplacement.References(atlas) : false;
-	}
-
-	/// <summary>
-	/// Helper function that determines whether the two atlases are related.
-	/// </summary>
-
-	static public bool CheckIfRelated (UIAtlas a, UIAtlas b)
-	{
-		if (a == null || b == null) return false;
-		return a == b || a.References(b) || b.References(a);
+		if (atlas == this as INGUIAtlas) return true;
+		var rep = replacement;
+		return (rep != null) ? rep.References(atlas) : false;
 	}
 
 	/// <summary>
@@ -410,19 +395,20 @@ public class UIAtlas : MonoBehaviour
 	public void MarkAsChanged ()
 	{
 #if UNITY_EDITOR
-		NGUITools.SetDirty(gameObject);
+		NGUITools.SetDirty(this);
 #endif
-		if (mReplacement != null) mReplacement.MarkAsChanged();
+		var rep = replacement;
+		if (rep != null) rep.MarkAsChanged();
 
-		UISprite[] list = NGUITools.FindActive<UISprite>();
+		var list = NGUITools.FindActive<UISprite>();
 
 		for (int i = 0, imax = list.Length; i < imax; ++i)
 		{
-			UISprite sp = list[i];
+			var sp = list[i];
 
-			if (CheckIfRelated(this, sp.atlas))
+			if (NGUITools.CheckIfRelated(this, sp.atlas))
 			{
-				UIAtlas atl = sp.atlas;
+				var atl = sp.atlas;
 				sp.atlas = null;
 				sp.atlas = atl;
 #if UNITY_EDITOR
@@ -431,15 +417,16 @@ public class UIAtlas : MonoBehaviour
 			}
 		}
 
-		UIFont[] fonts = Resources.FindObjectsOfTypeAll(typeof(UIFont)) as UIFont[];
+		var f0 = Resources.FindObjectsOfTypeAll<NGUIFont>();
 
-		for (int i = 0, imax = fonts.Length; i < imax; ++i)
+		for (int i = 0, imax = f0.Length; i < imax; ++i)
 		{
-			UIFont font = fonts[i];
+			var font = f0[i];
+			if (font.atlas == null) continue;
 
-			if (CheckIfRelated(this, font.atlas))
+			if (NGUITools.CheckIfRelated(this, font.atlas))
 			{
-				UIAtlas atl = font.atlas;
+				var atl = font.atlas;
 				font.atlas = null;
 				font.atlas = atl;
 #if UNITY_EDITOR
@@ -448,15 +435,34 @@ public class UIAtlas : MonoBehaviour
 			}
 		}
 
-		UILabel[] labels = NGUITools.FindActive<UILabel>();
+		var f1 = Resources.FindObjectsOfTypeAll<UIFont>();
+
+		for (int i = 0, imax = f1.Length; i < imax; ++i)
+		{
+			var font = f1[i];
+
+			if (NGUITools.CheckIfRelated(this, font.atlas))
+			{
+				var atl = font.atlas;
+				font.atlas = null;
+				font.atlas = atl;
+#if UNITY_EDITOR
+				NGUITools.SetDirty(font);
+#endif
+			}
+		}
+
+		var labels = NGUITools.FindActive<UILabel>();
 
 		for (int i = 0, imax = labels.Length; i < imax; ++i)
 		{
-			UILabel lbl = labels[i];
+			var lbl = labels[i];
+			if (lbl.atlas == null) continue;
 
-			if (lbl.bitmapFont != null && CheckIfRelated(this, lbl.bitmapFont.atlas))
+			if (NGUITools.CheckIfRelated(this, lbl.atlas))
 			{
-				UIFont font = lbl.bitmapFont;
+				var atl = lbl.atlas;
+				var font = lbl.bitmapFont;
 				lbl.bitmapFont = null;
 				lbl.bitmapFont = font;
 #if UNITY_EDITOR
@@ -472,7 +478,13 @@ public class UIAtlas : MonoBehaviour
 
 	bool Upgrade ()
 	{
-		if (mReplacement) return mReplacement.Upgrade();
+		var rep = replacement;
+
+		if (rep != null)
+		{
+			var uiAtlas = rep as UIAtlas;
+			if (uiAtlas != null) return uiAtlas.Upgrade();
+		}
 
 		if (mSprites.Count == 0 && sprites.Count > 0 && material)
 		{
@@ -485,7 +497,7 @@ public class UIAtlas : MonoBehaviour
 				Sprite old = sprites[i];
 				Rect outer = old.outer;
 				Rect inner = old.inner;
-				
+
 				if (mCoordinates == Coordinates.TexCoords)
 				{
 					NGUIMath.ConvertToPixels(outer, width, height, true);
@@ -494,17 +506,17 @@ public class UIAtlas : MonoBehaviour
 
 				UISpriteData sd = new UISpriteData();
 				sd.name = old.name;
-				
+
 				sd.x = Mathf.RoundToInt(outer.xMin);
 				sd.y = Mathf.RoundToInt(outer.yMin);
 				sd.width = Mathf.RoundToInt(outer.width);
 				sd.height = Mathf.RoundToInt(outer.height);
-				
+
 				sd.paddingLeft = Mathf.RoundToInt(old.paddingLeft * outer.width);
 				sd.paddingRight = Mathf.RoundToInt(old.paddingRight * outer.width);
 				sd.paddingBottom = Mathf.RoundToInt(old.paddingBottom * outer.height);
 				sd.paddingTop = Mathf.RoundToInt(old.paddingTop * outer.height);
-				
+
 				sd.borderLeft = Mathf.RoundToInt(inner.xMin - outer.xMin);
 				sd.borderRight = Mathf.RoundToInt(outer.xMax - inner.xMax);
 				sd.borderBottom = Mathf.RoundToInt(outer.yMax - inner.yMax);

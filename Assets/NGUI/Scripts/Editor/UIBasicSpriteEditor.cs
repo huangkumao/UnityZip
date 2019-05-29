@@ -1,13 +1,13 @@
 //-------------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
 using UnityEditor;
 using UnityEngine;
 
 /// <summary>
-/// Inspector class used to edit UITextures.
+/// Inspector class used to edit UI sprites and textures.
 /// </summary>
 
 [CanEditMultipleObjects]

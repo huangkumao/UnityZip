@@ -1,6 +1,6 @@
 //-------------------------------------------------
-//            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+//			  NGUI: Next-Gen UI kit
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
 //#define SHOW_HIDDEN_OBJECTS
@@ -103,7 +103,7 @@ public class UIDrawCall : MonoBehaviour
 	/// Callback that will be triggered when a new draw call gets created.
 	/// </summary>
 
-	public OnCreateDrawCall onCreateDrawCall; 
+	public OnCreateDrawCall onCreateDrawCall;
 	public delegate void OnCreateDrawCall (UIDrawCall dc, MeshFilter filter, MeshRenderer ren);
 
 	/// <summary>
@@ -480,7 +480,7 @@ public class UIDrawCall : MonoBehaviour
 	/// Set the draw call's geometry.
 	/// </summary>
 
-	public void UpdateGeometry (int widgetCount)
+	public void UpdateGeometry (int widgetCount, bool needsBounds)
 	{
 		this.widgetCount = widgetCount;
 		int vertexCount = verts.Count;
@@ -594,7 +594,11 @@ public class UIDrawCall : MonoBehaviour
 				if (setIndices)
 				{
 					mIndices = GenerateCachedIndexBuffer(vertexCount, indexCount);
+#if UNITY_5_4 || UNITY_5_5_OR_NEWER
+					mMesh.SetTriangles(mIndices, 0, needsBounds);
+#else
 					mMesh.triangles = mIndices;
+#endif
 				}
 
 #if !UNITY_FLASH
@@ -916,6 +920,19 @@ public class UIDrawCall : MonoBehaviour
 		dc.renderQueue = pan.startingRenderQueue;
 		dc.sortingOrder = pan.sortingOrder;
 		dc.manager = pan;
+
+#if UNITY_EDITOR && UNITY_2018_3_OR_NEWER
+		// We need to perform this check here and not in Create (string) to get to manager reference
+		var prefabStage = UnityEditor.Experimental.SceneManagement.PrefabStageUtility.GetCurrentPrefabStage ();
+		if (prefabStage != null && dc.manager != null)
+		{
+			// If prefab stage exists and new daw call
+			var stage = UnityEditor.SceneManagement.StageUtility.GetStageHandle (dc.manager.gameObject);
+			if (stage == prefabStage.stageHandle)
+				UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene (dc.gameObject, prefabStage.scene);
+		}
+#endif
+
 		return dc;
 	}
 
@@ -970,7 +987,7 @@ public class UIDrawCall : MonoBehaviour
 
 		for (int i = mActiveList.size; i > 0; )
 		{
-			UIDrawCall dc = mActiveList[--i];
+			var dc = mActiveList.buffer[--i];
 
 			if (dc)
 			{
@@ -1003,7 +1020,7 @@ public class UIDrawCall : MonoBehaviour
 	{
 		for (int i = mInactiveList.size; i > 0; )
 		{
-			UIDrawCall dc = mInactiveList[--i];
+			var dc = mInactiveList.buffer[--i];
 
 			if (dc)
 			{
@@ -1025,7 +1042,7 @@ public class UIDrawCall : MonoBehaviour
 	{
 		int count = 0;
 		for (int i = 0; i < mActiveList.size; ++i)
-			if (mActiveList[i].manager == panel) ++count;
+			if (mActiveList.buffer[i].manager == panel) ++count;
 		return count;
 	}
 

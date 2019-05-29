@@ -1,6 +1,6 @@
 //-------------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
 #if !UNITY_EDITOR && (UNITY_IPHONE || UNITY_ANDROID || UNITY_WP8 || UNITY_WP_8_1 || UNITY_BLACKBERRY || UNITY_WINRT || UNITY_METRO)
@@ -630,7 +630,7 @@ public class UIInput : MonoBehaviour
 	/// <summary>
 	/// Update the text based on input.
 	/// </summary>
-	
+
 	protected virtual void Update ()
 	{
 #if UNITY_EDITOR
@@ -722,7 +722,7 @@ public class UIInput : MonoBehaviour
 		if (mKeyboard != null)
 		{
 			string text = (mKeyboard.done || !mKeyboard.active) ? mCached : mKeyboard.text;
- 
+
 			if (inputShouldBeHidden)
 			{
 				if (text != "|")
@@ -860,7 +860,7 @@ public class UIInput : MonoBehaviour
 		int frame = Time.frameCount;
 
 		if (mIgnoreKey == frame) return;
-		
+
 		if (mCam != null && (key == mCam.cancelKey0 || key == mCam.cancelKey1))
 		{
 			mIgnoreKey = frame;
@@ -1331,12 +1331,9 @@ public class UIInput : MonoBehaviour
 				if (inputType == InputType.Password)
 				{
 					processed = "";
-
 					string asterisk = "*";
-
-					if (label.bitmapFont != null && label.bitmapFont.bmFont != null &&
-						label.bitmapFont.bmFont.GetGlyph('*') == null) asterisk = "x";
-
+					var fnt = label.bitmapFont as INGUIFont;
+					if (fnt != null && fnt.bmFont != null && fnt.bmFont.GetGlyph('*') == null) asterisk = "x";
 					for (int i = 0, imax = fullText.Length; i < imax; ++i) processed += asterisk;
 				}
 				else processed = fullText;

@@ -1,6 +1,6 @@
 //-------------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
 using UnityEngine;
@@ -44,7 +44,7 @@ public class BMSymbol
 	/// Validate this symbol, given the specified atlas.
 	/// </summary>
 
-	public bool Validate (UIAtlas atlas)
+	public bool Validate (INGUIAtlas atlas)
 	{
 		if (atlas == null) return false;
 
@@ -56,12 +56,12 @@ public class BMSymbol
 		{
 			if (string.IsNullOrEmpty(spriteName)) return false;
 
-			mSprite = (atlas != null) ? atlas.GetSprite(spriteName) : null;
+			Texture tex = null;
+			mSprite = atlas.GetSprite(spriteName);
+			tex = atlas.texture;
 
 			if (mSprite != null)
 			{
-				Texture tex = atlas.texture;
-
 				if (tex == null)
 				{
 					mSprite = null;

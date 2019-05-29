@@ -1,6 +1,6 @@
 //-------------------------------------------------
-//            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+//			  NGUI: Next-Gen UI kit
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
 using UnityEngine;
@@ -159,36 +159,36 @@ static public class NGUITools
 	/// New WWW call can fail if the crossdomain policy doesn't check out. Exceptions suck. It's much more elegant to check for null instead.
 	/// </summary>
 
-//    static public WWW OpenURL (string url)
-//    {
+//	  static public WWW OpenURL (string url)
+//	  {
 //#if UNITY_FLASH
-//        Debug.LogError("WWW is not yet implemented in Flash");
-//        return null;
+//		  Debug.LogError("WWW is not yet implemented in Flash");
+//		  return null;
 //#else
-//        WWW www = null;
-//        try { www = new WWW(url); }
-//        catch (System.Exception ex) { Debug.LogError(ex.Message); }
-//        return www;
+//		  WWW www = null;
+//		  try { www = new WWW(url); }
+//		  catch (System.Exception ex) { Debug.LogError(ex.Message); }
+//		  return www;
 //#endif
-//    }
+//	  }
 
-//    /// <summary>
-//    /// New WWW call can fail if the crossdomain policy doesn't check out. Exceptions suck. It's much more elegant to check for null instead.
-//    /// </summary>
+//	  /// <summary>
+//	  /// New WWW call can fail if the crossdomain policy doesn't check out. Exceptions suck. It's much more elegant to check for null instead.
+//	  /// </summary>
 
-//    static public WWW OpenURL (string url, WWWForm form)
-//    {
-//        if (form == null) return OpenURL(url);
+//	  static public WWW OpenURL (string url, WWWForm form)
+//	  {
+//		  if (form == null) return OpenURL(url);
 //#if UNITY_FLASH
-//        Debug.LogError("WWW is not yet implemented in Flash");
-//        return null;
+//		  Debug.LogError("WWW is not yet implemented in Flash");
+//		  return null;
 //#else
-//        WWW www = null;
-//        try { www = new WWW(url, form); }
-//        catch (System.Exception ex) { Debug.LogError(ex != null ? ex.Message : "<null>"); }
-//        return www;
+//		  WWW www = null;
+//		  try { www = new WWW(url, form); }
+//		  catch (System.Exception ex) { Debug.LogError(ex != null ? ex.Message : "<null>"); }
+//		  return www;
 //#endif
-//    }
+//	  }
 
 	/// <summary>
 	/// Same as Random.Range, but the returned value is between min and max, inclusive.
@@ -427,18 +427,29 @@ static public class NGUITools
 			if (dr.x != 0f || dr.y != 0f || dr.z != 1f || dr.w != 1f)
 			{
 				var region = w.drawingDimensions;
-				box.center = new Vector3((region.x + region.z) * 0.5f, (region.y + region.w) * 0.5f);
-				box.size = new Vector3(region.z - region.x, region.w - region.y);
+				var c = new Vector3((region.x + region.z) * 0.5f, (region.y + region.w) * 0.5f);
+				var s = new Vector3(region.z - region.x, region.w - region.y);
+
+				if (c != box.center || s != box.size)
+				{
+					box.center = c;
+					box.size = s;
+					NGUITools.SetDirty(box);
+				}
 			}
 			else
 			{
 				var corners = w.localCorners;
-				box.center = Vector3.Lerp(corners[0], corners[2], 0.5f);
-				box.size = corners[2] - corners[0];
+				var c = Vector3.Lerp(corners[0], corners[2], 0.5f);
+				var s = corners[2] - corners[0];
+
+				if (c != box.center || s != box.size)
+				{
+					box.center = c;
+					box.size = s;
+					NGUITools.SetDirty(box);
+				}
 			}
-#if UNITY_EDITOR
-			NGUITools.SetDirty(box);
-#endif
 		}
 	}
 
@@ -455,22 +466,46 @@ static public class NGUITools
 			if (dr.x != 0f || dr.y != 0f || dr.z != 1f || dr.w != 1f)
 			{
 				var region = w.drawingDimensions;
+				var c = new Vector2((region.x + region.z) * 0.5f, (region.y + region.w) * 0.5f);
+				var s = new Vector2(region.z - region.x, region.w - region.y);
+
 #if UNITY_4_3 || UNITY_4_5 || UNITY_4_6 || UNITY_4_7
-				box.center = new Vector3((region.x + region.z) * 0.5f, (region.y + region.w) * 0.5f);
+				if (c != box.center || s != box.size)
+				{
+					box.center = c;
+					box.size = s;
+					NGUITools.SetDirty(box);
+				}
 #else
-				box.offset = new Vector3((region.x + region.z) * 0.5f, (region.y + region.w) * 0.5f);
+				if (c != box.offset || s != box.size)
+				{
+					box.offset = c;
+					box.size = s;
+					NGUITools.SetDirty(box);
+				}
 #endif
-				box.size = new Vector3(region.z - region.x, region.w - region.y);
 			}
 			else
 			{
 				var corners = w.localCorners;
+				var c = Vector2.Lerp(corners[0], corners[2], 0.5f);
+				var s = (Vector2)(corners[2] - corners[0]);
+
 #if UNITY_4_3 || UNITY_4_5 || UNITY_4_6 || UNITY_4_7
-				box.center = Vector3.Lerp(corners[0], corners[2], 0.5f);
+				if (c != box.center || s != box.size)
+				{
+					box.center = c;
+					box.size = s;
+					NGUITools.SetDirty(box);
+				}
 #else
-				box.offset = Vector3.Lerp(corners[0], corners[2], 0.5f);
+				if (c != box.offset || s != box.size)
+				{
+					box.offset = c;
+					box.size = s;
+					NGUITools.SetDirty(box);
+				}
 #endif
-				box.size = corners[2] - corners[0];
 			}
 #if UNITY_EDITOR
 			NGUITools.SetDirty(box);
@@ -496,22 +531,46 @@ static public class NGUITools
 				if (dr.x != 0f || dr.y != 0f || dr.z != 1f || dr.w != 1f)
 				{
 					var region = w.drawingDimensions;
+					var c = new Vector2((region.x + region.z) * 0.5f, (region.y + region.w) * 0.5f);
+					var s = new Vector2(region.z - region.x, region.w - region.y);
+
 #if UNITY_4_3 || UNITY_4_5 || UNITY_4_6 || UNITY_4_7
-					box.center = new Vector3((region.x + region.z) * 0.5f, (region.y + region.w) * 0.5f);
+					if (c != box.center || s != box.size)
+					{
+						box.center = c;
+						box.size = s;
+						NGUITools.SetDirty(box);
+					}
 #else
-					box.offset = new Vector3((region.x + region.z) * 0.5f, (region.y + region.w) * 0.5f);
+					if (c != box.offset || s != box.size)
+					{
+						box.offset = c;
+						box.size = s;
+						NGUITools.SetDirty(box);
+					}
 #endif
-					box.size = new Vector3(region.z - region.x, region.w - region.y);
 				}
 				else
 				{
 					var corners = w.localCorners;
+					var c = Vector2.Lerp(corners[0], corners[2], 0.5f);
+					var s = (Vector2)(corners[2] - corners[0]);
+
 #if UNITY_4_3 || UNITY_4_5 || UNITY_4_6 || UNITY_4_7
-					box.center = Vector3.Lerp(corners[0], corners[2], 0.5f);
+					if (c != box.center || s != box.size)
+					{
+						box.center = c;
+						box.size = s;
+						NGUITools.SetDirty(box);
+					}
 #else
-					box.offset = Vector3.Lerp(corners[0], corners[2], 0.5f);
+					if (c != box.offset || s != box.size)
+					{
+						box.offset = c;
+						box.size = s;
+						NGUITools.SetDirty(box);
+					}
 #endif
-					box.size = corners[2] - corners[0];
 				}
 			}
 			else
@@ -574,7 +633,65 @@ static public class NGUITools
 	static public void SetDirty (UnityEngine.Object obj, string undoName = "last change")
 	{
 #if UNITY_EDITOR
+#if UNITY_2018_3_OR_NEWER
+		if (obj)
+		{
+			UnityEditor.EditorUtility.SetDirty(obj);
+
+			if (!UnityEditor.AssetDatabase.Contains(obj) && !Application.isPlaying)
+			{
+				if (obj is Component)
+				{
+					var component = (Component)obj;
+					UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(component.gameObject.scene);
+				}
+				else if (!(obj is UnityEditor.EditorWindow || obj is ScriptableObject))
+				{
+					UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
+				}
+			}
+		}
+#else
 		if (obj) UnityEditor.EditorUtility.SetDirty(obj);
+#endif
+#endif
+	}
+
+	static public void CheckForPrefabStage (GameObject gameObject)
+	{
+#if UNITY_EDITOR && UNITY_2018_3_OR_NEWER
+
+		var prefabStage = UnityEditor.Experimental.SceneManagement.PrefabStageUtility.GetPrefabStage (gameObject);
+		if (prefabStage == null)
+			return;
+
+		var rootsInParents = gameObject.GetComponentsInParent<UIRoot> (true);
+		var panelsInParents = gameObject.GetComponentsInParent<UIPanel> (true);
+
+		bool missingRoot = rootsInParents.Length == 0;
+		bool missingPanel = panelsInParents.Length == 0;
+
+		if (!missingRoot && !missingPanel)
+			return;
+
+		// Since this function is called from Awake/OnEnable, utilities like PrefabStage.prefabContentsRoot
+		// or Scene.GetRootGameObjects () aren't available at this point
+
+		var instanceRoot = gameObject.transform;
+		while (instanceRoot.parent != null)
+			instanceRoot = instanceRoot.parent;
+
+		GameObject container = UnityEditor.EditorUtility.CreateGameObjectWithHideFlags ("UIRoot (Environment)", HideFlags.DontSave);
+		container.layer = instanceRoot.gameObject.layer;
+
+		if (missingRoot)
+			container.AddComponent<UIRoot> ();
+
+		if (missingPanel)
+			container.AddComponent<UIPanel> ();
+
+		UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene (container, prefabStage.scene);
+		instanceRoot.SetParent (container.transform, false);
 #endif
 	}
 
@@ -620,6 +737,24 @@ static public class NGUITools
 		return go;
 	}
 
+#if UNITY_5_5_OR_NEWER
+	/// <summary>
+	/// Instantiate an object and add it to the specified parent.
+	/// </summary>
+
+	static public GameObject AddChild (this Transform parent, GameObject prefab)
+	{
+		var go = UnityEngine.Object.Instantiate(prefab, parent.transform);
+		var t = go.transform;
+		t.parent = parent;
+		t.localPosition = Vector3.zero;
+		t.localRotation = Quaternion.identity;
+		t.localScale = Vector3.one;
+		go.SetActive(true);
+		return go;
+	}
+#endif
+
 	/// <summary>
 	/// Instantiate an object and add it to the specified parent.
 	/// </summary>
@@ -633,7 +768,7 @@ static public class NGUITools
 	static public GameObject AddChild (this GameObject parent, GameObject prefab, int layer)
 	{
 #if UNITY_5_5_OR_NEWER
-		var go = (parent != null) ? UnityEngine.Object.Instantiate(prefab, parent.transform) : UnityEngine.Object.Instantiate(prefab);
+		var go = UnityEngine.Object.Instantiate(prefab, parent.transform);
 #if UNITY_EDITOR
 		if (!Application.isPlaying) UnityEditor.Undo.RegisterCreatedObjectUndo(go, "Create Object");
 #endif
@@ -692,7 +827,7 @@ static public class NGUITools
 		Profiler.BeginSample("Editor-only GC allocation (GetComponent)");
 #endif
 		var w = go.GetComponent<UIWidget>();
-		
+
 		if (w != null)
 		{
 #if UNITY_5_5_OR_NEWER
@@ -709,11 +844,11 @@ static public class NGUITools
 #else
 		Profiler.EndSample();
 #endif
-		
+
 		if (widgets.Length == 0) return 0;
 
 		int depth = int.MaxValue;
-		
+
 		for (int i = 0, imax = widgets.Length; i < imax; ++i)
 		{
 			if (widgets[i].enabled)
@@ -779,7 +914,7 @@ static public class NGUITools
 			if (panel != null)
 			{
 				UIPanel[] panels = go.GetComponentsInChildren<UIPanel>(true);
-				
+
 				for (int i = 0; i < panels.Length; ++i)
 				{
 					UIPanel p = panels[i];
@@ -1175,7 +1310,7 @@ static public class NGUITools
 	/// It will be sliced if the sprite has an inner rect, and a regular sprite otherwise.
 	/// </summary>
 
-	static public UISprite AddSprite (this GameObject go, UIAtlas atlas, string spriteName, int depth = int.MaxValue)
+	static public UISprite AddSprite (this GameObject go, INGUIAtlas atlas, string spriteName, int depth = int.MaxValue)
 	{
 		UISpriteData sp = (atlas != null) ? atlas.GetSprite(spriteName) : null;
 		UISprite sprite = AddWidget<UISprite>(go, depth);
@@ -1262,11 +1397,12 @@ static public class NGUITools
 		{
 			if (obj is Transform)
 			{
-				Transform t = (obj as Transform);
-				GameObject go = t.gameObject;
+				var t = (obj as Transform);
+				var go = t.gameObject;
 
 				if (Application.isPlaying)
 				{
+					go.SetActive(false);
 					t.parent = null;
 					UnityEngine.Object.Destroy(go);
 				}
@@ -1274,11 +1410,12 @@ static public class NGUITools
 			}
 			else if (obj is GameObject)
 			{
-				GameObject go = obj as GameObject;
-				Transform t = go.transform;
+				var go = obj as GameObject;
+				var t = go.transform;
 
 				if (Application.isPlaying)
 				{
+					go.SetActive(false);
 					t.parent = null;
 					UnityEngine.Object.Destroy(go);
 				}
@@ -1356,8 +1493,8 @@ static public class NGUITools
 
 		//while (child != null)
 		//{
-		//    if (child == parent) return true;
-		//    child = child.parent;
+		//	  if (child == parent) return true;
+		//	  child = child.parent;
 		//}
 		//return false;
 	}
@@ -1381,14 +1518,14 @@ static public class NGUITools
 			// If there is even a single enabled child, then we're using a Unity 4.0-based nested active state scheme.
 			for (int i = 0, imax = t.childCount; i < imax; ++i)
 			{
-				Transform child = t.GetChild(i);
+				var child = t.GetChild(i);
 				if (child.gameObject.activeSelf) return;
 			}
 
 			// If this point is reached, then all the children are disabled, so we must be using a Unity 3.5-based active state scheme.
 			for (int i = 0, imax = t.childCount; i < imax; ++i)
 			{
-				Transform child = t.GetChild(i);
+				var child = t.GetChild(i);
 				Activate(child, true);
 			}
 		}
@@ -1436,7 +1573,7 @@ static public class NGUITools
 	[System.Diagnostics.DebuggerStepThrough]
 	static void CallCreatePanel (Transform t)
 	{
-		UIWidget w = t.GetComponent<UIWidget>();
+		var w = t.GetComponent<UIWidget>();
 		if (w != null) w.CreatePanel();
 		for (int i = 0, imax = t.childCount; i < imax; ++i)
 			CallCreatePanel(t.GetChild(i));
@@ -1520,7 +1657,7 @@ static public class NGUITools
 		go.layer = layer;
 
 		Transform t = go.transform;
-		
+
 		for (int i = 0, imax = t.childCount; i < imax; ++i)
 		{
 			Transform child = t.GetChild(i);
@@ -1890,7 +2027,7 @@ static public class NGUITools
 			mSides[2] = cam.ViewportToWorldPoint(new Vector3(1f, 0.5f, depth));
 			mSides[3] = cam.ViewportToWorldPoint(new Vector3(0.5f, 0f, depth));
 		}
-		
+
 		if (relativeTo != null)
 		{
 			for (int i = 0; i < 4; ++i)
@@ -2365,13 +2502,13 @@ static public class NGUITools
 			case KeyCode.Keypad7: return "K7";
 			case KeyCode.Keypad8: return "K8";
 			case KeyCode.Keypad9: return "K9";
-			case KeyCode.KeypadPeriod: return ".";
-			case KeyCode.KeypadDivide: return "/";
-			case KeyCode.KeypadMultiply: return "*";
-			case KeyCode.KeypadMinus: return "-";
-			case KeyCode.KeypadPlus: return "+";
-			case KeyCode.KeypadEnter: return "NT";
-			case KeyCode.KeypadEquals: return "=";
+			case KeyCode.KeypadPeriod: return "K.";
+			case KeyCode.KeypadDivide: return "K/";
+			case KeyCode.KeypadMultiply: return "K*";
+			case KeyCode.KeypadMinus: return "K-";
+			case KeyCode.KeypadPlus: return "K+";
+			case KeyCode.KeypadEnter: return "KE";
+			case KeyCode.KeypadEquals: return "KQ";
 			case KeyCode.UpArrow: return "UP";
 			case KeyCode.DownArrow: return "DN";
 			case KeyCode.RightArrow: return "LT";
@@ -2497,7 +2634,7 @@ static public class NGUITools
 		if (caption == "H") return KeyCode.H;
 		if (caption == "I") return KeyCode.I;
 		if (caption == "J") return KeyCode.J;
-		if (caption == "L") return KeyCode.K;
+		if (caption == "K") return KeyCode.K;
 		if (caption == "L") return KeyCode.L;
 		if (caption == "M") return KeyCode.M;
 		if (caption == "N") return KeyCode.N;
@@ -2524,13 +2661,13 @@ static public class NGUITools
 		if (caption == "K7") return KeyCode.Keypad7;
 		if (caption == "K8") return KeyCode.Keypad8;
 		if (caption == "K9") return KeyCode.Keypad9;
-		if (caption == ".") return KeyCode.KeypadPeriod;
-		if (caption == "/") return KeyCode.KeypadDivide;
-		if (caption == "*") return KeyCode.KeypadMultiply;
-		if (caption == "-") return KeyCode.KeypadMinus;
-		if (caption == "+") return KeyCode.KeypadPlus;
-		if (caption == "NT") return KeyCode.KeypadEnter;
-		if (caption == "=") return KeyCode.KeypadEquals;
+		if (caption == "K.") return KeyCode.KeypadPeriod;
+		if (caption == "K/") return KeyCode.KeypadDivide;
+		if (caption == "K*") return KeyCode.KeypadMultiply;
+		if (caption == "K-") return KeyCode.KeypadMinus;
+		if (caption == "K+") return KeyCode.KeypadPlus;
+		if (caption == "KE") return KeyCode.KeypadEnter;
+		if (caption == "KQ") return KeyCode.KeypadEquals;
 		if (caption == "UP") return KeyCode.UpArrow;
 		if (caption == "DN") return KeyCode.DownArrow;
 		if (caption == "LT") return KeyCode.RightArrow;
@@ -2581,16 +2718,16 @@ static public class NGUITools
 		if (caption == "(Start)") return KeyCode.JoystickButton7;
 		if (caption == "(LS)") return KeyCode.JoystickButton8;
 		if (caption == "(RS)") return KeyCode.JoystickButton9;
-		if (caption == "(J10)") return KeyCode.JoystickButton10;
-		if (caption == "(J11)") return KeyCode.JoystickButton11;
-		if (caption == "(J12)") return KeyCode.JoystickButton12;
-		if (caption == "(J13)") return KeyCode.JoystickButton13;
-		if (caption == "(J14)") return KeyCode.JoystickButton14;
-		if (caption == "(J15)") return KeyCode.JoystickButton15;
-		if (caption == "(J16)") return KeyCode.JoystickButton16;
-		if (caption == "(J17)") return KeyCode.JoystickButton17;
-		if (caption == "(J18)") return KeyCode.JoystickButton18;
-		if (caption == "(J19)") return KeyCode.JoystickButton19;
+		if (caption == "J10") return KeyCode.JoystickButton10;
+		if (caption == "J11") return KeyCode.JoystickButton11;
+		if (caption == "J12") return KeyCode.JoystickButton12;
+		if (caption == "J13") return KeyCode.JoystickButton13;
+		if (caption == "J14") return KeyCode.JoystickButton14;
+		if (caption == "J15") return KeyCode.JoystickButton15;
+		if (caption == "J16") return KeyCode.JoystickButton16;
+		if (caption == "J17") return KeyCode.JoystickButton17;
+		if (caption == "J18") return KeyCode.JoystickButton18;
+		if (caption == "J19") return KeyCode.JoystickButton19;
 		return KeyCode.None;
 	}
 
@@ -2695,4 +2832,92 @@ static public class NGUITools
 	}
 
 	static ColorSpace mColorSpace = ColorSpace.Uninitialized;
+
+	/// <summary>
+	/// Helper function that determines whether the two atlases are related.
+	/// </summary>
+
+	static public bool CheckIfRelated (INGUIAtlas a, INGUIAtlas b)
+	{
+		if (a == null || b == null) return false;
+		return a == b || a.References(b) || b.References(a);
+	}
+
+	/// <summary>
+	/// Replace all atlas reference of one atlas with another.
+	/// </summary>
+
+	static public void Replace (INGUIAtlas before, INGUIAtlas after)
+	{
+		var list = FindActive<UISprite>();
+
+		for (int i = 0, imax = list.Length; i < imax; ++i)
+		{
+			var sp = list[i];
+
+			if (sp.atlas == before)
+			{
+				sp.atlas = after;
+#if UNITY_EDITOR
+				SetDirty(sp);
+#endif
+			}
+		}
+
+		var f0 = Resources.FindObjectsOfTypeAll<UIFont>();
+
+		for (int i = 0, imax = f0.Length; i < imax; ++i)
+		{
+			var font = f0[i];
+
+			if (font.atlas == before)
+			{
+				font.atlas = after;
+#if UNITY_EDITOR
+				SetDirty(font);
+#endif
+			}
+		}
+
+		var f1 = Resources.FindObjectsOfTypeAll<NGUIFont>();
+
+		for (int i = 0, imax = f1.Length; i < imax; ++i)
+		{
+			var font = f1[i];
+
+			if (font.atlas == before)
+			{
+				font.atlas = after;
+#if UNITY_EDITOR
+				SetDirty(font);
+#endif
+			}
+		}
+
+		var labels = FindActive<UILabel>();
+
+		for (int i = 0, imax = labels.Length; i < imax; ++i)
+		{
+			var lbl = labels[i];
+
+			if (lbl.bitmapFont != null && lbl.atlas == before)
+			{
+				lbl.atlas = after;
+#if UNITY_EDITOR
+				SetDirty(lbl);
+#endif
+			}
+		}
+	}
+
+	/// <summary>
+	/// Helper function that determines whether the two atlases are related.
+	/// </summary>
+
+	static public bool CheckIfRelated (INGUIFont a, INGUIFont b)
+	{
+		if (a == null || b == null) return false;
+		if (a.isDynamic && b.isDynamic && a.dynamicFont.fontNames[0] == b.dynamicFont.fontNames[0]) return true;
+		return a == b || a.References(b) || b.References(a);
+	}
 }

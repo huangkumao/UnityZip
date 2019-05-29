@@ -1,6 +1,6 @@
 //-------------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
 using UnityEngine;
@@ -66,7 +66,7 @@ public class UISnapshotPointEditor : Editor
 			// Invalidate this prefab's preview
 			if (UIPrefabTool.instance != null)
 			{
-				UISnapshotPoint snapshot = target as UISnapshotPoint;
+				var snapshot = target as UISnapshotPoint;
 
 				if (snapshot.isOrthographic) target.name = "NGUI Snapshot Point " + snapshot.orthoSize;
 				else target.name = "NGUI Snapshot Point " + snapshot.nearClip + " " + snapshot.farClip + " " + snapshot.fieldOfView;
@@ -79,14 +79,18 @@ public class UISnapshotPointEditor : Editor
 
 	GameObject GetPrefab ()
 	{
-		UISnapshotPoint point = target as UISnapshotPoint;
+		var point = target as UISnapshotPoint;
 
 		// Root object of this prefab instance
-		Transform t = point.transform.parent;
-		GameObject go = PrefabUtility.FindPrefabRoot(t == null ? point.gameObject : t.gameObject);
-		 return null;
-
-		// Actual prefab
-		//return PrefabUtility.GetCorrespondingObjectFromSource(go) as GameObject;
+		var t = point.transform.parent;
+#if UNITY_2018_3_OR_NEWER
+		var go = PrefabUtility.GetOutermostPrefabInstanceRoot(t == null ? point.gameObject : t.gameObject);
+		if (go == null) return null;
+		return PrefabUtility.GetCorrespondingObjectFromSource(go);
+#else
+		var go = PrefabUtility.FindPrefabRoot(t == null ? point.gameObject : t.gameObject);
+		if (go == null) return null;
+		return PrefabUtility.GetPrefabParent(go) as GameObject;
+#endif
 	}
 }

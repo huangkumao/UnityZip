@@ -1,6 +1,6 @@
 //-------------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
 using UnityEditor;
@@ -26,6 +26,8 @@ public class ComponentSelector : ScriptableWizard
 
 	static string GetName (System.Type t)
 	{
+		if (t == typeof(INGUIAtlas)) return "Atlas";
+		if (t == typeof(INGUIFont)) return "Font";
 		string s = t.ToString();
 		s = s.Replace("UnityEngine.", "");
 		if (s.StartsWith("UI")) s = s.Substring(2);
@@ -57,6 +59,12 @@ public class ComponentSelector : ScriptableWizard
 		else cb(o);
 	}
 
+	static public void Draw (string buttonName, INGUIAtlas atlas, OnSelectionCallback cb, bool editButton, params GUILayoutOption[] options)
+	{
+		if (atlas is UIAtlas) Draw(buttonName, atlas as UIAtlas, cb, editButton, options);
+		else Draw(buttonName, atlas as NGUIAtlas, cb, editButton, options);
+	}
+
 	/// <summary>
 	/// Draw a button + object selection combo filtering specified types.
 	/// </summary>
@@ -66,21 +74,43 @@ public class ComponentSelector : ScriptableWizard
 		Draw<T>(NGUITools.GetTypeName<T>(), obj, cb, editButton, options);
 	}
 
-	/// <summary>
-	/// Show the selection wizard.
-	/// </summary>
-
-	static public void Show<T> (OnSelectionCallback cb) where T : Object { Show<T>(cb, new string[] {".prefab"}); }
-
-	/// <summary>
-	/// Show the selection wizard.
-	/// </summary>
-
-	static public void Show<T> (OnSelectionCallback cb, string[] extensions) where T : Object
+	static public void Draw (INGUIAtlas atlas, OnSelectionCallback cb, bool editButton, params GUILayoutOption[] options)
 	{
-		System.Type type = typeof(T);
-		string title = (type == typeof(UIAtlas) ? "Select an " : "Select a ") + GetName(type);
-		ComponentSelector comp = ScriptableWizard.DisplayWizard<ComponentSelector>(title);
+		if (atlas is UIAtlas) Draw(atlas as UIAtlas, cb, editButton, options);
+		else Draw(atlas as NGUIAtlas, cb, editButton, options);
+	}
+
+	static public void Draw (INGUIFont font, OnSelectionCallback cb, bool editButton, params GUILayoutOption[] options)
+	{
+		if (font is UIFont) Draw(font as UIFont, cb, editButton, options);
+		else Draw(font as NGUIFont, cb, editButton, options);
+	}
+
+	/// <summary>
+	/// Show the selection wizard.
+	/// </summary>
+
+	static public void Show (INGUIAtlas atlas, OnSelectionCallback cb)
+	{
+		if (atlas is UIAtlas) Show<UIAtlas>(cb, new string[] { ".prefab" });
+		else Show<NGUIAtlas>(cb, new string[] { ".asset" });
+	}
+
+	/// <summary>
+	/// Show the selection wizard.
+	/// </summary>
+
+	static public void Show<T> (OnSelectionCallback cb) { Show<T>(cb, new string[] {".prefab"}); }
+
+	/// <summary>
+	/// Show the selection wizard.
+	/// </summary>
+
+	static public void Show<T> (OnSelectionCallback cb, string[] extensions)
+	{
+		var type = typeof(T);
+		string title = GetName(type) + " Selection";
+		var comp = ScriptableWizard.DisplayWizard<ComponentSelector>(title);
 		comp.mTitle = title;
 		comp.mType = type;
 		comp.mCallback = cb;
@@ -94,11 +124,11 @@ public class ComponentSelector : ScriptableWizard
 		else
 		{
 			// Remove invalid fonts (Lucida Grande etc)
-			if (typeof(T) == typeof(Font))
+			if (type == typeof(Font))
 			{
 				for (int i = 0; i < comp.mObjects.Length; ++i)
 				{
-					Object obj = comp.mObjects[i];
+					var obj = comp.mObjects[i];
 					if (obj.name == "Arial") continue;
 					string path = AssetDatabase.GetAssetPath(obj);
 					if (string.IsNullOrEmpty(path)) comp.mObjects[i] = null;
@@ -125,9 +155,9 @@ public class ComponentSelector : ScriptableWizard
 
 		if (mExtensions != null)
 		{
-			string[] paths = AssetDatabase.GetAllAssetPaths();
-			bool isComponent = mType.IsSubclassOf(typeof(Component));
-			List<Object> list = new List<Object>();
+			var paths = AssetDatabase.GetAllAssetPaths();
+			var isComponent = mType.IsSubclassOf(typeof(Component));
+			var list = new List<Object>();
 
 			for (int i = 0; i < mObjects.Length; ++i)
 				if (mObjects[i] != null)
@@ -135,9 +165,8 @@ public class ComponentSelector : ScriptableWizard
 
 			for (int i = 0; i < paths.Length; ++i)
 			{
-				string path = paths[i];
-
-				bool valid = false;
+				var path = paths[i];
+				var valid = false;
 
 				for (int b = 0; b < mExtensions.Length; ++b)
 				{
@@ -151,18 +180,17 @@ public class ComponentSelector : ScriptableWizard
 				if (!valid) continue;
 
 				EditorUtility.DisplayProgressBar("Loading", "Searching assets, please wait...", (float)i / paths.Length);
-				Object obj = AssetDatabase.LoadMainAssetAtPath(path);
+				var obj = AssetDatabase.LoadMainAssetAtPath(path);
 				if (obj == null || list.Contains(obj)) continue;
 
 				if (!isComponent)
 				{
-					System.Type t = obj.GetType();
-					if (t == mType || t.IsSubclassOf(mType) && !list.Contains(obj))
-						list.Add(obj);
+					var t = obj.GetType();
+					if (t == mType || t.IsSubclassOf(mType) && !list.Contains(obj)) list.Add(obj);
 				}
-				else if (PrefabUtility.GetPrefabType(obj) == PrefabType.Prefab)
+				else if (NGUIEditorTools.IsPrefab(obj as GameObject))
 				{
-					Object t = (obj as GameObject).GetComponent(mType);
+					var t = (obj as GameObject).GetComponent(mType);
 					if (t != null && !list.Contains(t)) list.Add(t);
 				}
 			}
@@ -221,7 +249,7 @@ public class ComponentSelector : ScriptableWizard
 			foreach (Object o in mObjects)
 				if (DrawObject(o))
 					sel = o;
-			
+
 			GUILayout.EndScrollView();
 
 			if (sel != null)
@@ -262,7 +290,7 @@ public class ComponentSelector : ScriptableWizard
 				path = "[Embedded]";
 				GUI.contentColor = new Color(0.7f, 0.7f, 0.7f);
 			}
-			else if (comp != null && EditorUtility.IsPersistent(comp.gameObject))
+			else if (comp && comp.gameObject && EditorUtility.IsPersistent(comp.gameObject))
 				GUI.contentColor = new Color(0.6f, 0.8f, 1f);
 
 			retVal |= GUILayout.Button(obj.name, NGUIEditorTools.textArea, GUILayout.Width(160f), GUILayout.Height(20f));

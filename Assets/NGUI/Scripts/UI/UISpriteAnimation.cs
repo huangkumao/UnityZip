@@ -1,6 +1,6 @@
 //-------------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
 using UnityEngine;
@@ -106,23 +106,24 @@ public class UISpriteAnimation : MonoBehaviour
 		if (mSprite == null) mSprite = GetComponent<UISprite>();
 		mSpriteNames.Clear();
 
-		if (mSprite != null && mSprite.atlas != null)
+		if (mSprite != null)
 		{
-			List<UISpriteData> sprites = mSprite.atlas.spriteList;
+			var atlas = mSprite.atlas;
 
-			for (int i = 0, imax = sprites.Count; i < imax; ++i)
+			if (atlas != null)
 			{
-				UISpriteData sprite = sprites[i];
+				var sprites = atlas.spriteList;
 
-				if (string.IsNullOrEmpty(mPrefix) || sprite.name.StartsWith(mPrefix))
+				for (int i = 0, imax = sprites.Count; i < imax; ++i)
 				{
-					mSpriteNames.Add(sprite.name);
+					var sprite = sprites[i];
+					if (string.IsNullOrEmpty(mPrefix) || sprite.name.StartsWith(mPrefix)) mSpriteNames.Add(sprite.name);
 				}
+				mSpriteNames.Sort();
 			}
-			mSpriteNames.Sort();
 		}
 	}
-	
+
 	/// <summary>
 	/// Reset the animation to the beginning.
 	/// </summary>

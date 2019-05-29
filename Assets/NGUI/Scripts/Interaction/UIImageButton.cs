@@ -1,6 +1,6 @@
 //-------------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
 using UnityEngine;
@@ -87,7 +87,14 @@ public class UIImageButton : MonoBehaviour
 
 	void SetSprite (string sprite)
 	{
-		if (target.atlas == null || target.atlas.GetSprite(sprite) == null) return;
+		if (string.IsNullOrEmpty(sprite)) return;
+
+		var atlas = target.atlas;
+		if (atlas == null) return;
+
+		var atl = atlas as INGUIAtlas;
+		if (atl == null || atl.GetSprite(sprite) == null) return;
+
 		target.spriteName = sprite;
 		if (pixelSnap) target.MakePixelPerfect();
 	}

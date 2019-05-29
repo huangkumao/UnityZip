@@ -1,6 +1,6 @@
 //-------------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
 using UnityEditor;
@@ -20,12 +20,17 @@ public class UISpriteInspector : UIBasicSpriteEditor
 
 	void OnSelectAtlas (Object obj)
 	{
+		// Legacy atlas support
+		if (obj != null && obj is GameObject) obj = (obj as GameObject).GetComponent<UIAtlas>();
+
 		serializedObject.Update();
-		SerializedProperty sp = serializedObject.FindProperty("mAtlas");
-		sp.objectReferenceValue = obj;
+
+		var oldAtlas = serializedObject.FindProperty("mAtlas");
+		if (oldAtlas != null) oldAtlas.objectReferenceValue = obj;
+
 		serializedObject.ApplyModifiedProperties();
 		NGUITools.SetDirty(serializedObject.targetObject);
-		NGUISettings.atlas = obj as UIAtlas;
+		NGUISettings.atlas = obj as INGUIAtlas;
 	}
 
 	/// <summary>
@@ -48,26 +53,41 @@ public class UISpriteInspector : UIBasicSpriteEditor
 
 	protected override bool ShouldDrawProperties ()
 	{
+		var atlasProp = serializedObject.FindProperty("mAtlas");
+		var obj = atlasProp.objectReferenceValue;
+		var atlas = obj as INGUIAtlas;
+
 		GUILayout.BeginHorizontal();
-		if (NGUIEditorTools.DrawPrefixButton("Atlas"))
-			ComponentSelector.Show<UIAtlas>(OnSelectAtlas);
-		SerializedProperty atlas = NGUIEditorTools.DrawProperty("", serializedObject, "mAtlas", GUILayout.MinWidth(20f));
-		
-		if (GUILayout.Button("Edit", GUILayout.Width(40f)))
+
+		if (NGUIEditorTools.DrawPrefixButton("Atlas")) ComponentSelector.Show(atlas, OnSelectAtlas);
+
+		atlasProp = NGUIEditorTools.DrawProperty("", serializedObject, "mAtlas", GUILayout.MinWidth(20f));
+
+		if (GUILayout.Button("Edit", GUILayout.Width(40f)) && atlas != null)
 		{
-			if (atlas != null)
-			{
-				UIAtlas atl = atlas.objectReferenceValue as UIAtlas;
-				NGUISettings.atlas = atl;
-				if (atl != null) NGUIEditorTools.Select(atl.gameObject);
-			}
+			NGUISettings.atlas = atlas;
+			NGUIEditorTools.Select(atlas as Object);
 		}
+
+		// Legacy atlas support
+		if (atlasProp.objectReferenceValue != null && atlasProp.objectReferenceValue is GameObject)
+			atlasProp.objectReferenceValue = (atlasProp.objectReferenceValue as GameObject).GetComponent<UIAtlas>();
+
 		GUILayout.EndHorizontal();
-
-		SerializedProperty sp = serializedObject.FindProperty("mSpriteName");
-		NGUIEditorTools.DrawAdvancedSpriteField(atlas.objectReferenceValue as UIAtlas, sp.stringValue, SelectSprite, false);
-
+		var sp = serializedObject.FindProperty("mSpriteName");
+		NGUIEditorTools.DrawAdvancedSpriteField(atlas, sp.stringValue, SelectSprite, false);
 		NGUIEditorTools.DrawProperty("Material", serializedObject, "mMat");
+
+		SerializedProperty fa = serializedObject.FindProperty("mFixedAspect");
+		bool before = fa.boolValue;
+		NGUIEditorTools.DrawProperty("Fixed Aspect", fa);
+		if (fa.boolValue != before) (target as UIWidget).drawRegion = new Vector4(0f, 0f, 1f, 1f);
+
+		if (fa.boolValue)
+		{
+			EditorGUILayout.HelpBox("Note that Fixed Aspect mode is not compatible with Draw Region modifications done by sliders and progress bars.", MessageType.Info);
+		}
+
 		return true;
 	}
 
@@ -86,13 +106,13 @@ public class UISpriteInspector : UIBasicSpriteEditor
 
 	public override void OnPreviewGUI (Rect rect, GUIStyle background)
 	{
-		UISprite sprite = target as UISprite;
+		var sprite = target as UISprite;
 		if (sprite == null || !sprite.isValid) return;
 
-		Texture2D tex = sprite.mainTexture as Texture2D;
+		var tex = sprite.mainTexture as Texture2D;
 		if (tex == null) return;
 
-		UISpriteData sd = sprite.atlas.GetSprite(sprite.spriteName);
+		var sd = sprite.GetSprite(sprite.spriteName);
 		NGUIEditorTools.DrawSprite(tex, rect, sd, sprite.color);
 	}
 }

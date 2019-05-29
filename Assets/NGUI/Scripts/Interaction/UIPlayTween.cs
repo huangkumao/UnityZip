@@ -1,6 +1,6 @@
 //-------------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
 using UnityEngine;
@@ -280,6 +280,12 @@ public class UIPlayTween : MonoBehaviour
 			}
 		}
 	}
+
+	/// <summary>
+	/// Activate the tweeners.
+	/// </summary>
+
+	public void Play () { Play(true); }
 
 	/// <summary>
 	/// Activate the tweeners.

@@ -1,6 +1,6 @@
 //-------------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2018 Tasharen Entertainment Inc
+// Copyright © 2011-2019 Tasharen Entertainment Inc
 //-------------------------------------------------
 
 using UnityEngine;
@@ -295,6 +295,19 @@ public abstract class UITweener : MonoBehaviour
 	/// </summary>
 
 	void OnDisable () { mStarted = false; }
+
+	/// <summary>
+	/// Immediately finish the tween animation, if it's active.
+	/// </summary>
+
+	public void Finish ()
+	{
+		if (enabled)
+		{
+			Sample(mAmountPerDelta > 0f ? 1f : 0f, true);
+			enabled = false;
+		}
+	}
 
 	/// <summary>
 	/// Sample the tween at the specified factor.
